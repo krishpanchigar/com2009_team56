@@ -14,18 +14,18 @@ class MoveEight:
 
     def move_eight(self, clockwise=False):
         twist = Twist()
-        twist.linear.x = 0.1  
+        twist.linear.x = math.pi / 30  
         if clockwise:
-            twist.angular.z = -0.2  
+            twist.angular.z = -math.pi/15  
         else:
-            twist.angular.z = 0.2
+            twist.angular.z = math.pi/15
 
         
         if self.start_time is None:
             self.start_time = time.time()
 
         
-        duration = 15  
+        duration = 32  
         start = time.time()
         while time.time() - start < duration:
             self.pub.publish(twist)
