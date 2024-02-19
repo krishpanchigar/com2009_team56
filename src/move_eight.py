@@ -26,8 +26,9 @@ class MoveEight:
 
         (roll, pitch, yaw) = euler_from_quaternion([orientation.x, orientation.y, 
                         orientation.z, orientation.w], "sxyz")
+        yaw_degrees = yaw * 180 / math.pi
 
-        print(f"x = {pos_x:.3f} (m), y = {pos_y: .3f} (m), theta_z = {yaw: .3f} (radians)")
+        print(f"x = {pos_x:.2f} [m], y = {pos_y: .2f} [m], yaw = {yaw_degrees: .1f} [degrees]")
 
     def move_eight(self, clockwise=False):
         twist = Twist()
@@ -42,7 +43,7 @@ class MoveEight:
             self.start_time = time.time()
 
         
-        duration = 32  
+        duration = 31
         start = time.time()
         while time.time() - start < duration:
             self.pub.publish(twist)
