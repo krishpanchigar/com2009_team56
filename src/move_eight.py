@@ -4,13 +4,30 @@ import rospy
 from geometry_msgs.msg import Twist
 import math
 import time
+from tf.transformations import euler_from_quaternion
+from nav_msgs.msg import Odometry
 
 class MoveEight:
     def __init__(self):
         rospy.init_node('circle_motion_node', anonymous=True)
         self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+        self.sub = rospy.Subscriber("odom", Odometry, self.callback)
         self.rate = rospy.Rate(10)  
         self.start_time = None
+
+    
+    def callback(self, topic_data: Odometry):
+        pose = topic_data.pose.pose
+        position = pose.position
+        orientation = pose.orientation
+
+        pos_x = position.x
+        pos_y = position.y
+
+        (roll, pitch, yaw) = euler_from_quaternion([orientation.x, orientation.y, 
+                        orientation.z, orientation.w], "sxyz")
+
+        print(f"x = {pos_x:.3f} (m), y = {pos_y: .3f} (m), theta_z = {yaw: .3f} (radians)")
 
     def move_eight(self, clockwise=False):
         twist = Twist()
