@@ -28,7 +28,7 @@ class MoveEight:
                         orientation.z, orientation.w], "sxyz")
         yaw_degrees = yaw * 180 / math.pi
 
-        print(f"x = {pos_x:.2f} [m], y = {pos_y: .2f} [m], yaw = {yaw_degrees: .1f} [degrees]")
+        print(f"x={pos_x} [m], y={pos_y} [m], yaw={yaw_degrees} [degrees].")
 
     def move_eight(self, clockwise=False):
         twist = Twist()
