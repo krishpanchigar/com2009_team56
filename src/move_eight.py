@@ -3,7 +3,6 @@
 import rospy
 from geometry_msgs.msg import Twist
 import math
-import time
 from tf.transformations import euler_from_quaternion
 from nav_msgs.msg import Odometry
 
@@ -13,13 +12,25 @@ class MoveEight:
         self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.sub = rospy.Subscriber("odom", Odometry, self.callback)
         self.rate = rospy.Rate(10)  
-        self.start_time = None
-
+        self.start_position = None
+        self.current_position = None
+        self.last_position = None
+        self.total_distance = 0
     
     def callback(self, topic_data: Odometry):
         pose = topic_data.pose.pose
         position = pose.position
         orientation = pose.orientation
+
+        if self.start_position is None:
+            self.start_position = position
+            self.last_position = position
+
+        self.current_position = position 
+        distance = math.sqrt((self.current_position.x - self.last_position.x) ** 2 +
+                                 (self.current_position.y - self.last_position.y) ** 2)
+        self.total_distance += distance
+        self.last_position = self.current_position  
 
         pos_x = position.x
         pos_y = position.y
@@ -30,22 +41,19 @@ class MoveEight:
 
         print(f"x={pos_x} [m], y={pos_y} [m], yaw={yaw_degrees} [degrees].")
 
-    def move_eight(self, clockwise=False):
+    def move_eight(self, clockwise = False):
         twist = Twist()
-        twist.linear.x = math.pi / 30  
-        if clockwise:
-            twist.angular.z = -math.pi/15  
-        else:
-            twist.angular.z = math.pi/15
+        twist.linear.x = math.pi / 30
 
-        
-        if self.start_time is None:
-            self.start_time = time.time()
+        while not rospy.is_shutdown():
+            if self.total_distance <= 0.99*math.pi:
+                twist.angular.z = math.pi/15 if not clockwise else -math.pi/15
+            else:
+                twist.angular.z = -math.pi/15 if not clockwise else math.pi/15
 
-        
-        duration = 31
-        start = time.time()
-        while time.time() - start < duration:
+            if self.total_distance >= 2 * math.pi:
+                break
+
             self.pub.publish(twist)
             self.rate.sleep()
 
@@ -54,18 +62,10 @@ class MoveEight:
         self.pub.publish(twist)
 
     def main(self):
-        self.move_eight(clockwise=False)  
-        self.move_eight(clockwise=True)  
+        self.move_eight(clockwise=False)    
         self.stop_robot() 
         rospy.loginfo("Robot stopped.")
 
-        total_duration = time.time() - self.start_time
-        rospy.loginfo(f"Total duration: {total_duration} seconds.")
-
-        if math.isclose(total_duration, 60, abs_tol=2):
-            rospy.loginfo("Total duration is within the acceptable range.")
-        else:
-            rospy.logwarn("Total duration deviates significantly from the expected value.")
 
 if __name__ == '__main__':
     move_eight = MoveEight()
