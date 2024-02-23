@@ -62,13 +62,17 @@ class MoveEight:
     def move_eight(self, clockwise = False):
         twist = Twist()
         twist.linear.x = math.pi / 30
+        twist.angular.z = -math.pi / 15
     
         while not rospy.is_shutdown():
             if self.first_circle:
-                twist.angular.z = -math.pi / 15
-            elif not self.first_circle and not self.second_circle and self.current_position.x <= 0.05 and self.current_position.y <= 0.05 and self.current_yaw <= 1:
+                print("First")
                 twist.angular.z = math.pi / 15
-            elif not self.first_circle and self.second_circle and self.current_position.x <= 0.05 and self.current_position.y <= 0.05 and self.current_yaw <= 1:
+            elif not self.first_circle and not self.second_circle and (self.current_position.x <= 0.03 and self.current_position.x >= -0.03) and (self.current_position.y <= 0.03 and self.current_position.y >= -0.03) and self.current_yaw <= 1:
+                print("Second")
+                twist.angular.z = -math.pi / 15
+            elif not self.first_circle and self.second_circle and (self.current_position.x <= 0.03 and self.current_position.x >= -0.03) and (self.current_position.y <= 0.03 and self.current_position.y >= -0.03) and self.current_yaw <= 1:
+                print("Third")
                 break
 
             self.pub.publish(twist)
