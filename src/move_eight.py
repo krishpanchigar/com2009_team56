@@ -13,7 +13,7 @@ class MoveEight:
         rospy.init_node('circle_motion_node', anonymous=True)
         self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.sub = rospy.Subscriber("odom", Odometry, self.callback)
-        self.rate = rospy.Rate(1)  
+        self.rate = rospy.Rate(10)  
         self.start_position = None
         self.start_yaw = None
         self.current_position = None
@@ -55,7 +55,7 @@ class MoveEight:
         twist.linear.x = math.pi / 30
 
         while not rospy.is_shutdown():
-            if self.total_distance <= 0.976*math.pi:
+            if self.total_distance < math.pi:
                 twist.angular.z = math.pi/15 if not clockwise else -math.pi/15
             else:
                 twist.angular.z = -math.pi/15 if not clockwise else math.pi/15
