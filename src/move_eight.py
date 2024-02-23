@@ -41,7 +41,7 @@ class MoveEight:
         (roll, pitch, yaw) = euler_from_quaternion([orientation.x, orientation.y, 
                         orientation.z, orientation.w], "sxyz")
         
-        yaw_degrees = yaw * 180 / math.pi
+        yaw_degrees = math.degrees(yaw) if math.degrees(yaw) >= 0 else 360 + math.degrees(yaw)
 
         if self.first_circle and self.current_position.x > 0.4:
             self.first_circle = False
@@ -50,7 +50,7 @@ class MoveEight:
             self.second_circle = True
 
         if self.start_yaw is None:
-            self.start_yaw = yaw * 180 / math.pi
+            self.start_yaw = math.degrees(yaw) if math.degrees(yaw) >= 0 else 360 + math.degrees(yaw)
 
         self.current_yaw = yaw_degrees - self.start_yaw  
 
