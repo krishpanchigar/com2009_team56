@@ -53,6 +53,8 @@ class MoveEight:
             self.start_yaw = math.degrees(yaw) if math.degrees(yaw) >= 0 else 360 + math.degrees(yaw)
 
         self.current_yaw = yaw_degrees - self.start_yaw  
+        if self.current_yaw < 0:
+            self.current_yaw += 360
 
         pos_x = position.x
         pos_y = position.y
@@ -68,10 +70,10 @@ class MoveEight:
             if self.first_circle:
                 print("First")
                 twist.angular.z = math.pi / 15
-            elif not self.first_circle and not self.second_circle and (self.current_position.x <= 0.03 and self.current_position.x >= -0.03) and (self.current_position.y <= 0.03 and self.current_position.y >= -0.03) and self.current_yaw <= 1:
+            elif not self.first_circle and not self.second_circle and (self.current_position.x <= 0.04 and self.current_position.x >= -0.04) and (self.current_position.y <= 0.04 and self.current_position.y >= -0.04) and self.current_yaw <= 1:
                 print("Second")
                 twist.angular.z = -math.pi / 15
-            elif not self.first_circle and self.second_circle and (self.current_position.x <= 0.03 and self.current_position.x >= -0.03) and (self.current_position.y <= 0.03 and self.current_position.y >= -0.03) and self.current_yaw <= 1:
+            elif not self.first_circle and self.second_circle and (self.current_position.x <= 0.04 and self.current_position.x >= -0.04) and (self.current_position.y <= 0.04 and self.current_position.y >= -0.04) and self.current_yaw <= 1:
                 print("Third")
                 break
 
