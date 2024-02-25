@@ -15,6 +15,7 @@ class MoveEight:
         self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.sub = rospy.Subscriber("odom", Odometry, self.callback)
         self.rate = rospy.Rate(10)  
+        self.last_print_time = rospy.Time.now() 
         self.start_position = None
         self.start_yaw = None
         self.current_position = None
@@ -59,7 +60,10 @@ class MoveEight:
         pos_x = position.x
         pos_y = position.y
 
-        print(f"x={pos_x: .2f} [m], y={pos_y: .2f} [m], yaw={self.current_yaw: .1f} [degrees].")
+        current_time = rospy.Time.now()
+        if (current_time - self.last_print_time).to_sec() >= 1.0:
+            print(f"x={pos_x: .2f} [m], y={pos_y: .2f} [m], yaw={self.current_yaw: .1f} [degrees].")
+            self.last_print_time = current_time
 
     def move_eight(self, clockwise = False):
         twist = Twist()
@@ -68,13 +72,13 @@ class MoveEight:
     
         while not rospy.is_shutdown():
             if self.first_circle:
-                print("First")
+                # print("First")
                 twist.angular.z = math.pi / 15
             elif not self.first_circle and not self.second_circle and (self.current_position.x <= 0.04 and self.current_position.x >= -0.04) and (self.current_position.y <= 0.04 and self.current_position.y >= -0.04) and self.current_yaw <= 1:
-                print("Second")
+                # print("Second")
                 twist.angular.z = -math.pi / 15
             elif not self.first_circle and self.second_circle and (self.current_position.x <= 0.04 and self.current_position.x >= -0.04) and (self.current_position.y <= 0.04 and self.current_position.y >= -0.04) and self.current_yaw <= 1:
-                print("Third")
+                # print("Third")
                 break
 
             self.pub.publish(twist)
