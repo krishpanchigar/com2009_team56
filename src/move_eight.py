@@ -32,8 +32,11 @@ class MoveEight:
         orientation = pose.orientation
 
         if self.start_position is None:
+            print("1")
             self.start_position = position
             self.current_position = position
+
+            print(self.start_position.x, self.start_position.y)
         
         self.current_position.x = position.x - self.start_position.x
         self.current_position.y = position.y - self.start_position.y
@@ -44,10 +47,10 @@ class MoveEight:
         
         yaw_degrees = math.degrees(yaw) if math.degrees(yaw) >= 0 else 360 + math.degrees(yaw)
 
-        if self.first_circle and self.current_position.x > 0.4:
+        if not self.second_circle and self.current_position.y > 0.4:
             self.first_circle = False
 
-        if not self.first_circle and self.current_position.x < -0.4:
+        if not self.first_circle and self.current_position.y < -0.4:
             self.second_circle = True
 
         if self.start_yaw is None:
@@ -60,25 +63,29 @@ class MoveEight:
         pos_x = position.x
         pos_y = position.y
 
+        if self.first_circle:
+            print("First circle")
+        
+        if self.second_circle:
+            print("Second circle")
+
         current_time = rospy.Time.now()
         if (current_time - self.last_print_time).to_sec() >= 1.0:
-            print(f"x={pos_x: .2f} [m], y={pos_y: .2f} [m], yaw={self.current_yaw: .1f} [degrees].")
+            print(f"x={self.current_position.x: .2f} [m], y={self.current_position.y: .2f} [m], yaw={self.current_yaw: .1f} [degrees].")
             self.last_print_time = current_time
 
     def move_eight(self, clockwise = False):
         twist = Twist()
         twist.linear.x = math.pi / 30
         twist.angular.z = -math.pi / 15
+        
     
         while not rospy.is_shutdown():
             if self.first_circle:
-                # print("First")
                 twist.angular.z = math.pi / 15
-            elif not self.first_circle and not self.second_circle and (self.current_position.x <= 0.04 and self.current_position.x >= -0.04) and (self.current_position.y <= 0.04 and self.current_position.y >= -0.04) and self.current_yaw <= 1:
-                # print("Second")
+            elif not self.first_circle and not self.second_circle and (self.current_position.x <= 0.04 and self.current_position.x >= -0.04) and (self.current_position.y <= 0.04 and self.current_position.y >= -0.04):
                 twist.angular.z = -math.pi / 15
-            elif not self.first_circle and self.second_circle and (self.current_position.x <= 0.04 and self.current_position.x >= -0.04) and (self.current_position.y <= 0.04 and self.current_position.y >= -0.04) and self.current_yaw <= 1:
-                # print("Third")
+            elif not self.first_circle and self.second_circle and (self.current_position.x <= 0.04 and self.current_position.x >= -0.04) and (self.current_position.y <= 0.04 and self.current_position.y >= -0.04):
                 break
 
             self.pub.publish(twist)
