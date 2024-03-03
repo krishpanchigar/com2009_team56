@@ -56,17 +56,35 @@ class Avoidance:
         if (current_time - self.last_print_time).to_sec() >= 1.0:
             print(f"x={pos_x: .2f} [m], y={pos_y: .2f} [m], yaw={self.current_yaw: .1f} [degrees].")
             self.last_print_time = current_time
-
+            
     def lidar_callback(self, data):
-        front_ranges = data.ranges[:10] + data.ranges[-10:]
+        front_ranges = data.ranges[:20] + data.ranges[-20:]
+        left_range = data.ranges[:80] + data.ranges[100:]
+        right_range = data.ranges[:260] + data.ranges[280:]
         min_front_range = min(front_ranges)
+        min_left_range = min(left_range)
+        min_right_range = min(right_range)
         twist = Twist()
+
+        if min_right_range < 0.5:
+            twist.linear.x = 0.0
+            twist.angular.z = 1
+        else:
+            twist.linear.x = 0.1
+            twist.angular.z = 0.0
         
+        if min_left_range < 0.5:
+            twist.linear.x = 0.0
+            twist.angular.z = 1
+        else:
+            twist.linear.x = 0.1
+            twist.angular.z = 0.0
+
         if min_front_range < 0.5:
             twist.linear.x = 0.0
-            twist.angular.z = 0.5
+            twist.angular.z = 1
         else:
-            twist.linear.x = 0.2
+            twist.linear.x = 0.1
             twist.angular.z = 0.0
 
         self.velocity_publisher.publish(twist)
