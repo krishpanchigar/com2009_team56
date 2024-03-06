@@ -14,8 +14,7 @@ class ZoneNavigator:
         self.odom_sub = rospy.Subscriber('/odom', Odometry, self.odom_callback)
         self.scan_sub = rospy.Subscriber('/scan', LaserScan, self.scan_callback)
         
-        self.zones = [[-1,-1],[-1,0],[0,0],[0,-1]]
-        # [-1,-1],[-2,-1],[-2,0],[-2,1],[-1,1],[0,1],[1,1],[1,0],[1,-1],[1,-2],[0,-2],[-1.-2],[-2,-2]
+        self.zones = [[-1,-1],[-1,0],[0,0],[0,-1], [-1,-1],[-2,-1],[-2,0],[-2,1],[-1,1],[0,1],[1,1],[1,0],[1,-1],[1,-2],[0,-2],[-1.-2],[-2,-2]]
         self.current_zone_index = 0
         self.obstacle_detected = False
         self.pos_x = 0
