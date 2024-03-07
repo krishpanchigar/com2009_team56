@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 from geometry_msgs.msg import Twist
@@ -12,12 +12,12 @@ class Explorer:
 
     def callback(self, data):
         # If there's an obstacle within 1 meter, turn left
-        if min(data.ranges) < 1.0:
+        if min(data.ranges) < 0.25:
             self.twist.linear.x = 0.0
             self.twist.angular.z = 0.5
         # Otherwise, move forward
         else:
-            self.twist.linear.x = 0.5
+            self.twist.linear.x = 0.1
             self.twist.angular.z = 0.0
         self.pub.publish(self.twist)
 
