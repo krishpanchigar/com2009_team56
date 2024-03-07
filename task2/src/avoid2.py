@@ -14,7 +14,7 @@ class ZoneNavigator:
         self.odom_sub = rospy.Subscriber('/odom', Odometry, self.odom_callback)
         self.scan_sub = rospy.Subscriber('/scan', LaserScan, self.scan_callback)
         
-        self.zones = [[-1,-1],[-2,-1],[-2,0],[-2,1],[-1,1],[0,1],[1,1],[1,0],[1,-1],[1,-2],[0,-2],[-1.-2],[-2,-2]]
+        self.zones = [[-1,-1],[-2,-1],[-2,0],[-2,1],[-1,1],[0,1],[1,1],[1,0],[1,-1],[1,-2],[0,-2],[-1,-2],[-2,-2]]
         self.current_zone_index = 0
         self.obstacle_detected = False
         self.pos_x = 0
@@ -42,6 +42,7 @@ class ZoneNavigator:
         threshold = 0.5
 
         self.front_clear = all(r > 0.5 for r in front_ranges)
+        self.waypoint_clear = all(r > 0.6 for r in front_ranges)
         # self.right_clear = all(r > 0.3 for r in right_ranges)
         # self.left_clear = all(r > 0.3 for r in left_ranges)
 
@@ -71,30 +72,47 @@ class ZoneNavigator:
         rate = rospy.Rate(10)
         while not rospy.is_shutdown() and self.current_zone_index < len(self.zones):
             waypoint = [self.zones[self.current_zone_index][0] + 0.5, self.zones[self.current_zone_index][1] + 0.5]
-            
-            if abs(self.pos_x - waypoint[0]) < 0.04 and abs(self.pos_y - waypoint[1]) < 0.04: 
-            # math.sqrt((self.pos_x - waypoint[0])**2 + (self.pos_y - waypoint[1])**2) < 0.01:
+
+            if abs(self.pos_x - waypoint[0]) < 0.03 and abs(self.pos_y - waypoint[1]) < 0.03:
                 self.current_zone_index += 1
                 print(self.current_zone_index)
                 continue
-            
-            if not self.front_clear:
+
+            angle_to_waypoint = math.atan2(waypoint[1] - self.pos_y, waypoint[0] - self.pos_x)
+            angle_diff = self.normalize_angle(angle_to_waypoint - self.yaw)
+            distance = math.sqrt((self.pos_x-waypoint[0])**2 + (self.pos_y-waypoint[1])**2)
+
+            # 特殊避障：朝向目标方向且前方有障碍物
+            if abs(angle_diff) < 0.3 and not self.waypoint_clear and distance>0.9:
+                stop_msg = Twist()
+                self.vel_pub.publish(stop_msg)
+                rospy.sleep(1)
+
+                turn_msg = Twist()
+                turn_msg.angular.z = -0.5
+                self.vel_pub.publish(turn_msg)
+                rospy.sleep(2.4)
+
+                forward_msg = Twist()
+                forward_msg.linear.x = 0.2
+                self.vel_pub.publish(forward_msg)
+                rospy.sleep(5)
+
+            elif not self.front_clear:
                 stop_msg = Twist()
                 self.vel_pub.publish(stop_msg)
                 rospy.sleep(1)
                 
-                # Turn right if right is clear, otherwise turn left
                 turn_msg = Twist()
-                turn_msg.angular.z = -0.5 
-                # if self.right_clear else 0.5
+                turn_msg.angular.z = -0.5
                 self.vel_pub.publish(turn_msg)
                 rospy.sleep(1)
 
-                continue
-                
-            self.move_towards(waypoint)
+            else:
+                self.move_towards(waypoint)
 
             rate.sleep()
+
 
 if __name__ == '__main__':
     navigator = ZoneNavigator()
