@@ -9,7 +9,7 @@ def save_map_periodically():
     rospy.wait_for_service('static_map')
     save_map_service = rospy.ServiceProxy('static_map', SaveMap)
 
-    rate = rospy.Rate(0.0167)  # once per minute
+    rate = rospy.Rate(0.0668)  # once per 15s
     while not rospy.is_shutdown():
         try:
             save_map_service("/task2/map/task2")
