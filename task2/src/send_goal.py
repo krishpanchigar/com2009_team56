@@ -2,7 +2,6 @@
 
 import rospy
 from geometry_msgs.msg import PoseStamped
-from actionlib_msgs.msg import GoalStatusArray
 
 class SendGoal:
     def __init__(self):
