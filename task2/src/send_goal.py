@@ -37,7 +37,12 @@ class SendGoal:
             (-0.5, -1.5, -math.pi),
             (-1.5, -1.5, math.pi)
         ]                
-        
+
+    def goal_result_cb(self, data):
+        if data.status.status == 3:
+            self.is_bot_ready = True
+            rospy.loginfo("Goal reached.")
+
 
     def callback(self, topic_data: Odometry):
         pose = topic_data.pose.pose
