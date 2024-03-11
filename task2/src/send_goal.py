@@ -77,8 +77,9 @@ class SendGoal:
     def navigate(self):
         for waypoint in self.waypoints:
             x, y, z = waypoint
-            if self.is_bot_ready:
-                self.send_goal(x, y, z)
+            while not self.is_bot_ready:
+                rospy.sleep(0.1)  # sleep for a short duration to prevent CPU hogging
+            self.send_goal(x, y, z)
 
 if __name__ == "__main__":
     navigator = SendGoal()
