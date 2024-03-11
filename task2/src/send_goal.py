@@ -10,6 +10,7 @@ from move_base_msgs.msg import MoveBaseActionResult
 import time
 
 class SendGoal:
+    increment = 0
     def __init__(self):
         rospy.init_node('multi_point_navigator', anonymous=True)
 
@@ -21,7 +22,13 @@ class SendGoal:
         self.pub_goal = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
         self.sub_goal_result = rospy.Subscriber('/move_base/result', MoveBaseActionResult, self.goal_result_cb)
         self.sub = rospy.Subscriber("odom", Odometry, self.callback)
-        rospy.sleep(1) 
+        rospy.sleep(1)
+        
+        increment += 1
+        if increment == 10:
+            self.is_bot_ready = True
+            rospy.loginfo("Goal timed-out.")
+            increment = 0
 
         self.waypoints = [
             (-1.5, -0.5, 0.7, 0.7),
