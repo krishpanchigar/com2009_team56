@@ -24,18 +24,18 @@ class SendGoal:
         rospy.sleep(1) 
 
         self.waypoints = [
-            (-1.5, -0.5, math.pi / 2),
-            (-1.5, 0.5, math.pi / 2),
-            (-1.5, 1.5, math.pi),
-            (-0.5, 1.5, math.pi),
-            (0.5, 1.5, math.pi),
-            (1.5, 1.5, -math.pi / 2),
-            (1.5, 0.5, -math.pi / 2),
-            (1.5, -0.5, -math.pi / 2),
-            (1.5, -1.5, -math.pi),
-            (0.5, -1.5, -math.pi),
-            (-0.5, -1.5, -math.pi),
-            (-1.5, -1.5, math.pi)
+            (-1.5, -0.5, 0.7, 0.7),
+            (-1.5, 0.5, 0.7, 0.7),
+            (-1.5, 1.5, 0, -1),
+            (-0.5, 1.5, 0, -1),
+            (0.5, 1.5, 0, -1),
+            (1.5, 1.5, -0.7, 0.7),
+            (1.5, 0.5, -0.7, 0.7),
+            (1.5, -0.5, -0.7, 0.7),
+            (1.5, -1.5, -1, 0),
+            (0.5, -1.5, -1, 0),
+            (-0.5, -1.5, -1, 0),
+            (-1.5, -1.5, -1, 0)
         ]                
 
     def goal_result_cb(self, data):
@@ -62,24 +62,26 @@ class SendGoal:
     
 
     
-    def send_goal(self, x, y, z):
+    def send_goal(self, x, y, z, w):
         goal = PoseStamped()
         goal.header.frame_id = "map"
         goal.header.stamp = rospy.Time.now()
         goal.header.frame_id = 'map'
         goal.pose.position.x = x
         goal.pose.position.y = y
-        goal.pose.orientation.w = z
+        goal.pose.orientation.z = z
+        goal.pose.orientation.w = w
         self.pub_goal.publish(goal)
         self.is_bot_ready = False
-        rospy.loginfo(f"Sending goal to ({x}, {y}, {z})")
+        rospy.loginfo(f"Sending goal to ({x}, {y}, {z}, {w})")
 
     def navigate(self):
         for waypoint in self.waypoints:
-            x, y, z = waypoint
+            x, y, z, w = waypoint
             while not self.is_bot_ready:
-                rospy.sleep(0.1)  # sleep for a short duration to prevent CPU hogging
-            self.send_goal(x, y, z)
+                rospy.sleep(0.1)
+            self.send_goal(x, y, z, w)
+            
 
 if __name__ == "__main__":
     navigator = SendGoal()
