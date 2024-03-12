@@ -20,6 +20,8 @@ class SendGoal:
         self.increment = 0
         self.goal_threshold = 0.5
         self.current_goal = None
+        self.last_move_time = rospy.Time.now()
+        self.last_position = None
 
         self.pub_goal = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
         self.sub_goal_result = rospy.Subscriber('/move_base/result', MoveBaseActionResult, self.goal_result_cb)
@@ -68,6 +70,11 @@ class SendGoal:
             print(f"x={pos_x: .2f} [m], y={pos_y: .2f} [m], yaw={yaw: .1f} [degrees].")
             self.last_print_time = current_time
 
+        # Update last_move_time
+        if self.last_position is None or (pos_x != self.last_position[0] and pos_y != self.last_position[1]):
+            self.last_move_time = rospy.Time.now()
+            self.last_position = (pos_x, pos_y)
+
         # Preempt the goal if the bot is in the vicinity of the goal
         if self.current_goal is not None:
             distance_to_goal = math.sqrt((pos_x - self.current_goal[0])**2 + (pos_y - self.current_goal[1])**2)
@@ -95,6 +102,10 @@ class SendGoal:
         for waypoint in self.waypoints:
             x, y, z, w = waypoint
             while not self.is_bot_ready:
+                # if the robot is stationary for more than 2 seconds, move to next goal
+                if (rospy.Time.now() - self.last_move_time).to_sec() > 2:
+                    rospy.loginfo("Bot is stationary for more than 2 seconds. Preempting goal.")
+                    self.is_bot_ready = True
                 rospy.sleep(0.1)
             self.send_goal(x, y, z, w)
             
