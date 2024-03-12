@@ -108,7 +108,7 @@ class SendGoal:
                 if (rospy.Time.now() - self.last_move_time).to_sec() > 2:
                     rospy.loginfo("Bot is stationary for more than 2 seconds. Preempting goal.")
                     self.is_bot_ready = True
-                elif self.goal_start_time is not None and (rospy.Time.now() - self.goal_start_time).to_sec() > 7:
+                elif self.goal_start_time is not None and (rospy.Time.now() - self.goal_start_time).to_sec() > 9:
                     rospy.loginfo("Goal timed-out.")
                     self.is_bot_ready = True
                 rospy.sleep(0.1)
