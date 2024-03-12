@@ -18,6 +18,8 @@ class SendGoal:
         self.is_bot_ready = True
         self.rate = rospy.Rate(10)
         self.increment = 0
+        self.goal_threshold = 0.5
+        self.current_goal = None
 
         self.pub_goal = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
         self.sub_goal_result = rospy.Subscriber('/move_base/result', MoveBaseActionResult, self.goal_result_cb)
@@ -66,7 +68,13 @@ class SendGoal:
             print(f"x={pos_x: .2f} [m], y={pos_y: .2f} [m], yaw={yaw: .1f} [degrees].")
             self.last_print_time = current_time
 
-    
+        # Preempt the goal if the bot is in the vicinity of the goal
+        if self.current_goal is not None:
+            distance_to_goal = math.sqrt((pos_x - self.current_goal[0])**2 + (pos_y - self.current_goal[1])**2)
+            if distance_to_goal < self.goal_threshold:
+                self.is_bot_ready = True
+                rospy.loginfo("Goal preempted.")
+                self.current_goal = None
 
     
     def send_goal(self, x, y, z, w):
@@ -78,6 +86,7 @@ class SendGoal:
         goal.pose.position.y = y
         goal.pose.orientation.z = z
         goal.pose.orientation.w = w
+        self.current_goal = (x, y)
         self.pub_goal.publish(goal)
         self.is_bot_ready = False
         rospy.loginfo(f"Sending goal to ({x}, {y}, {z}, {w})")
