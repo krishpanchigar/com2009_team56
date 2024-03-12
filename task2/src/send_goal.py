@@ -22,6 +22,7 @@ class SendGoal:
         self.current_goal = None
         self.last_move_time = rospy.Time.now()
         self.last_position = None
+        self.goal_start_time = None
 
         self.pub_goal = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
         self.sub_goal_result = rospy.Subscriber('/move_base/result', MoveBaseActionResult, self.goal_result_cb)
@@ -96,6 +97,7 @@ class SendGoal:
         self.current_goal = (x, y)
         self.pub_goal.publish(goal)
         self.is_bot_ready = False
+        self.goal_start_time = rospy.Time.now()
         rospy.loginfo(f"Sending goal to ({x}, {y}, {z}, {w})")
 
     def navigate(self):
@@ -105,6 +107,9 @@ class SendGoal:
                 # if the robot is stationary for more than 2 seconds, move to next goal
                 if (rospy.Time.now() - self.last_move_time).to_sec() > 2:
                     rospy.loginfo("Bot is stationary for more than 2 seconds. Preempting goal.")
+                    self.is_bot_ready = True
+                elif self.goal_start_time is not None and (rospy.Time.now() - self.goal_start_time).to_sec() > 7:
+                    rospy.loginfo("Goal timed-out.")
                     self.is_bot_ready = True
                 rospy.sleep(0.1)
             self.send_goal(x, y, z, w)
