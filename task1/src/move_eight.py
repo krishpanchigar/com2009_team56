@@ -32,11 +32,9 @@ class MoveEight:
         orientation = pose.orientation
 
         if self.start_position is None:
-            print("1")
             self.start_position = position
             self.current_position = position
 
-            print(self.start_position.x, self.start_position.y)
         
         self.current_position.x = position.x - self.start_position.x
         self.current_position.y = position.y - self.start_position.y
@@ -62,12 +60,6 @@ class MoveEight:
 
         pos_x = position.x
         pos_y = position.y
-
-        if self.first_circle:
-            print("First circle")
-        
-        if self.second_circle:
-            print("Second circle")
 
         current_time = rospy.Time.now()
         if (current_time - self.last_print_time).to_sec() >= 1.0:
