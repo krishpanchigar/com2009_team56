@@ -51,6 +51,8 @@ class Tb3LaserScan(object):
         left_arc = scan_data.ranges[0:21]
         right_arc = scan_data.ranges[-20:]
         front_arc = np.array(left_arc[::-1] + right_arc[::-1])
+        self.right_wall = scan_data.ranges[255:285].min()
+        self.left_wall = scan_data.ranges[75:105].min()
         
         self.min_distance = front_arc.min()
         arc_angles = np.arange(-20, 21)
@@ -59,4 +61,6 @@ class Tb3LaserScan(object):
     def __init__(self):
         self.min_distance = 0.0
         self.closest_object_position = 0.0 # degrees
-        self.subscriber = rospy.Subscriber('/scan', LaserScan, self.laserscan_cb) 
+        self.right_wall = 0.0
+        self.left_wall = 0.0
+        self.subscriber = rospy.Subscriber('/scan', LaserScan, self.laserscan_cb)
