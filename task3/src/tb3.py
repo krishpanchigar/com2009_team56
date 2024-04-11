@@ -50,9 +50,9 @@ class Tb3LaserScan(object):
     def laserscan_cb(self, scan_data):
         left_arc = scan_data.ranges[0:21]
         right_arc = scan_data.ranges[-20:]
-        front_arc = np.array(left_arc[::-1] + right_arc[::-1])
-        self.right_wall = scan_data.ranges[255:285].min()
-        self.left_wall = scan_data.ranges[75:105].min()
+        front_arc = np.array(scan_data.ranges[-5:5])
+        self.right_wall = np.array(scan_data.ranges[255:285]).min()
+        self.left_wall = np.array(scan_data.ranges[75:105]).min()
         
         self.min_distance = front_arc.min()
         arc_angles = np.arange(-20, 21)
