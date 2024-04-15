@@ -14,8 +14,6 @@ from tf.transformations import euler_from_quaternion
 from math import degrees
 import numpy as np
 
-
-# TODO: change lidar data to return min instead of average
 class Motion():
 
     """

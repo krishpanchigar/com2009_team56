@@ -22,15 +22,15 @@ class MazeFollower(object):
     def run(self):
         self.motion.set_velocity(self.fwd_vel, 0.0)
         self.motion.publish_velocity()
-        self.left_wall_control = self.lidar.subsets.l3
-        self.right_wall_control = self.lidar.subsets.r3
+        self.left_wall_control = min(self.lidar.subsets.l3Array)
+        self.right_wall_control = min(self.lidar.subsets.r3Array)
         # Following right wall
         while not rospy.is_shutdown():
-            self.left_wall = self.lidar.subsets.l3
-            self.right_wall = self.lidar.subsets.r3
+            self.left_wall = min(self.lidar.subsets.l3Array)
+            self.right_wall = min(self.lidar.subsets.r3Array)
             
             # Keeping the turtle within the error
-            while self.lidar.subsets.front > 0.3 or math.isnan(self.lidar.subsets.front):
+            while min(self.lidar.subsets.frontArray) > 0.3 or math.isnan(self.lidar.subsets.front):
                 if self.right_wall > self.right_wall_control + self.error:
                     self.motion.set_velocity(self.fwd_vel, -self.ang_vel)
                     print('right')
@@ -42,7 +42,7 @@ class MazeFollower(object):
                     print('fwd')
                 self.motion.publish_velocity()
             
-            print(self.lidar.subsets.front)
+            print(min(self.lidar.subsets.frontArray))
             
 if __name__ == '__main__':
     rospy.init_node('maze_follower')
