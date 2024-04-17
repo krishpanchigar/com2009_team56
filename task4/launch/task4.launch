@@ -48,6 +48,7 @@
           args="-d $(find turtlebot3_navigation)/rviz/turtlebot3_navigation.rviz"/>
   </group>
 
-  <!-- <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-urdf -model turtlebot3_$(arg model) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -Y $(arg yaw) -param robot_description" /> -->
+  <node name="rqt_image_view" pkg="rqt_gui" type="rqt_gui" args="--perspective /camera/rgb/image_raw" />
+
 
 </launch>
