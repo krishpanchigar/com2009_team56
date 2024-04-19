@@ -30,7 +30,7 @@ class MazeFollower(object):
             self.right_wall = min(self.lidar.subsets.r3Array)
             
             # Keeping the turtle within the error
-            while min(self.lidar.subsets.frontArray) > 0.3 or math.isnan(self.lidar.subsets.front):
+            while min(self.lidar.subsets.frontArray) > 0.3 or min(self.lidar.subsets.r3Array) < 0.3 or  math.isnan(self.lidar.subsets.front):
                 if self.right_wall > self.right_wall_control + self.error:
                     self.motion.set_velocity(self.fwd_vel, -self.ang_vel)
                     print('right')
@@ -41,6 +41,22 @@ class MazeFollower(object):
                     self.motion.set_velocity(self.fwd_vel, 0.0)
                     print('fwd')
                 self.motion.publish_velocity()
+            
+            #Check for where walls are:
+            self.motion.set_velocity(0.0, 0.0)
+            self.motion.publish_velocity()
+            
+            if min(self.lidar.subsets.r3Array) > 0.3:
+                print('No right wall detected. Turning right')
+            else:
+                print('Right wall detected')
+                if min(self.lidar.subsets.l3Array) > 0.3:
+                    print('No left wall detected. Turning left')
+                else:
+                    print('Left wall detected')
+                    print('Dead end')
+                    break
+                
             
             print(min(self.lidar.subsets.frontArray))
             
