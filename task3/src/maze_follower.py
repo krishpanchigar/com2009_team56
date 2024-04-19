@@ -43,7 +43,7 @@ class MazeFollower(object):
                 self.motion.publish_velocity()
             
             #Check for where walls are:
-            self.motion.set_velocity(0.0, 0.0)
+            self.motion.stop()
             self.motion.publish_velocity()
             
             if min(self.lidar.subsets.r3Array) > 0.3:
