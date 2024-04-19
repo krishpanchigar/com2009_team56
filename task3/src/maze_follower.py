@@ -14,7 +14,7 @@ class MazeFollower(object):
         self.odom = waffle.Pose(debug=True)
         self.error = 0.08
         self.fwd_vel = 0.15
-        self.ang_vel = 0.5
+        self.ang_vel = math.pi/2
 
     def stop(self):
         self.motion.stop()
@@ -48,17 +48,24 @@ class MazeFollower(object):
             
             if min(self.lidar.subsets.r3Array) > 0.3:
                 print('No right wall detected. Turning right')
+                self.motion.set_velocity(0.0, -self.ang_vel)
+                self.sleep(1)
             else:
                 print('Right wall detected')
                 if min(self.lidar.subsets.l3Array) > 0.3:
                     print('No left wall detected. Turning left')
+                    self.motion.set_velocity(0.0, self.ang_vel)
+                    self.sleep(1)
                 else:
                     print('Left wall detected')
                     print('Dead end')
+                    self.motion.set_velocity(0.0, -self.ang_vel)
+                    self.motion.publish_velocity()
+                    self.rate.sleep(2)
                     break
-                
             
-            print(min(self.lidar.subsets.frontArray))
+            self.motion.stop()
+            self.motion.publish_velocity()
             
 if __name__ == '__main__':
     rospy.init_node('maze_follower')
