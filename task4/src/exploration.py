@@ -45,9 +45,11 @@ class RobotSLAM:
         self.m00 = 0
         self.m00_min = 10000
 
-        color_ranges = {
+        self.color_detections = {}
+
+        self.color_ranges = {
             'green': ((81, 175, 0), (92, 255, 255)),
-            'blue': ((101, 175, 0), (107, 255, 255)),
+            'blue': ((115, 224, 100), (130, 255, 255)),
             'red': ((0, 175, 0), (7, 255, 255)),
             'yellow': ((23, 175, 0), (28, 250, 255)),
         }
@@ -103,16 +105,7 @@ class RobotSLAM:
         crop_img = cv_img[crop_y:crop_y+crop_height, crop_x:crop_x+crop_width]
         hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
 
-        color_ranges = {
-            'green': ((81, 175, 0), (92, 255, 255)),
-            'blue': ((115, 224, 100), (130, 255, 255)),
-            'red': ((0, 175, 0), (7, 255, 255)),
-            'yellow': ((23, 175, 0), (28, 250, 255)),
-        }
-        
-        color_detections = {}
-
-        for color, (lower, upper) in color_ranges.items():
+        for color, (lower, upper) in self.color_ranges.items():
             mask = cv2.inRange(hsv_img, lower, upper)
             result_img = cv2.bitwise_and(crop_img, crop_img, mask=mask)
             
@@ -123,11 +116,10 @@ class RobotSLAM:
             if self.m00 > self.m00_min: 
                 cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 2)
                 print(f"Detected {color} at y-position {self.cy}")
-                color_detections[color] = (self.m00, self.cy)
+                self.color_detections[color] = (self.m00, self.cy)
 
             cv2.imshow('cropped image', crop_img)
         cv2.waitKey(1)
-        self.color_detections = color_detections
     
 
     def main(self):
@@ -135,31 +127,34 @@ class RobotSLAM:
             if self.stop_counter > 0:
                 self.stop_counter -= 1
 
+            detected = False
+
             for color, (m00, cy) in self.color_detections.items():
                 if m00 > self.m00_min:
-                    if 560-100 <= cy <= 560+100:
-                        if self.move_rate != 'stop':
-                            self.move_rate = 'stop'
-                            self.stop_counter = 30
-                            print(f"STOPPED: The blob of {color} is now dead-ahead at y-position {cy} pixels... Counting down: {self.stop_counter}")
-                            break  
+                    if 460 <= cy <= 660:
+                        self.move_rate = 'stop'
+                        self.stop_counter = 30 
+                        print(f"STOPPED: The blob of {color} is now dead-ahead at y-position {cy} pixels... Counting down: {self.stop_counter}")
+                        detected = True
+                        break
                     else:
-                        if self.move_rate != 'slow':
-                            self.move_rate = 'slow'
-                            print(f"MOVING SLOW: A blob of {color} of size {m00:.0f} pixels is in view at y-position: {cy:.0f} pixels.")
+                        print(f"MOVING SLOW: A blob of {color} of size {m00:.0f} pixels is in view at y-position: {cy:.0f} pixels.")
+                        self.move_rate = 'slow'
+                        detected = True
 
+            if not detected: 
+                if self.move_rate != 'fast':
+                    print("MOVING FAST: No relevant objects in view, scanning the area...")
+                    self.move_rate = 'fast'
 
-                if self.move_rate == 'fast':
-                    print("MOVING FAST: I can't see anything at the moment, scanning the area...")
-                    self.robot_controller.set_move_cmd(0.0, self.turn_vel_fast)
-                elif self.move_rate == 'slow':
-                    self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
-                elif self.move_rate == 'stop' and self.stop_counter > 0:
-                    self.robot_controller.set_move_cmd(0.0, 0.0)
-                else:
-                    self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
+            # Apply the current movement command based on move_rate
+            if self.move_rate == 'stop' and self.stop_counter > 0:
+                self.robot_controller.set_move_cmd(0.0, 0.0)
+            elif self.move_rate == 'slow':
+                self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
+            elif self.move_rate == 'fast':
+                self.robot_controller.set_move_cmd(0.0, self.turn_vel_fast)
 
-        
             self.robot_controller.publish()
             self.rate.sleep()
 
@@ -167,16 +162,16 @@ class RobotSLAM:
 if __name__ == '__main__':
     robot_slam = RobotSLAM()
 
-    robot_slam.set_initial_pose(0, 0, 0)
+    # robot_slam.set_initial_pose(0, 0, 0)
 
-    waypoints = [(-1.6,1.6)] 
+    # waypoints = [(-1.6,1.6)] 
 
-    for point in waypoints:
-        result = robot_slam.move_to_goal(point[0], point[1])
-        if result:
-            rospy.loginfo("Reached waypoint %s", point)
-        else:
-            rospy.loginfo("Failed to reach waypoint %s", point)
+    # for point in waypoints:
+    #     result = robot_slam.move_to_goal(point[0], point[1])
+    #     if result:
+    #         rospy.loginfo("Reached waypoint %s", point)
+    #     else:
+    #         rospy.loginfo("Failed to reach waypoint %s", point)
     
     
     try:
@@ -185,7 +180,7 @@ if __name__ == '__main__':
         pass
 
     # Save the map at the end of exploration
-    robot_slam.save_map("my_robot_map")
+    # robot_slam.save_map("my_robot_map")
 
     rospy.loginfo("Exploration and map saving complete.")
     rospy.signal_shutdown("Exploration and map saving complete.")
