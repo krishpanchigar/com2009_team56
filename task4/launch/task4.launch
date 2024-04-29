@@ -48,7 +48,8 @@
           args="-d $(find turtlebot3_navigation)/rviz/turtlebot3_navigation.rviz"/>
   </group>
 
-  <node name="rqt_image_view" pkg="rqt_gui" type="rqt_gui" args="--perspective /camera/rgb/image_raw" />
+  <!-- Camera -->
+  <node name="rqt_image_view" pkg="rqt_image_view" type="rqt_image_view" args="--perspective /camera/rgb/image_raw"/>
 
 
 </launch>

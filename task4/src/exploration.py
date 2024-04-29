@@ -98,7 +98,7 @@ class RobotSLAM:
 
         height, width, _ = cv_img.shape
         crop_width = width - 800
-        crop_height = 400
+        crop_height = 300
         crop_x = int((width/2) - (crop_width/2))
         crop_y = int((height/2) - (crop_height/2))
 
