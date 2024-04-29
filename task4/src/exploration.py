@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import math
 import rospy
 import tf
 import actionlib
@@ -104,7 +105,7 @@ class RobotSLAM:
 
         crop_img = cv_img[crop_y:crop_y+crop_height, crop_x:crop_x+crop_width]
         hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
-
+        
         for color, (lower, upper) in self.color_ranges.items():
             mask = cv2.inRange(hsv_img, lower, upper)
             result_img = cv2.bitwise_and(crop_img, crop_img, mask=mask)
@@ -118,9 +119,22 @@ class RobotSLAM:
                 print(f"Detected {color} at y-position {self.cy}")
                 self.color_detections[color] = (self.m00, self.cy)
 
-            cv2.imshow('cropped image', crop_img)
-        cv2.waitKey(1)
-    
+                contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                if contours:
+                    largest_contour = max(contours, key=cv2.contourArea)
+                    x, y, w, h = cv2.boundingRect(largest_contour)
+                    cv2.rectangle(crop_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
+
+                    focal_length = 1206.8897719532354   
+                    real_object_height = 70  
+
+                    distance_mm = (focal_length * real_object_height) / h
+                    distance_m = distance_mm / 1000
+
+                    print(f"Estimated distance: {distance_m} m")
+        cv2.imshow('cropped image', crop_img)
+        cv2.waitKey(1) 
+
 
     def main(self):
         while not self.ctrl_c:
@@ -161,26 +175,11 @@ class RobotSLAM:
 # Main execution
 if __name__ == '__main__':
     robot_slam = RobotSLAM()
-
-    # robot_slam.set_initial_pose(0, 0, 0)
-
-    # waypoints = [(-1.6,1.6)] 
-
-    # for point in waypoints:
-    #     result = robot_slam.move_to_goal(point[0], point[1])
-    #     if result:
-    #         rospy.loginfo("Reached waypoint %s", point)
-    #     else:
-    #         rospy.loginfo("Failed to reach waypoint %s", point)
-    
     
     try:
         robot_slam.main()
     except rospy.ROSInterruptException:
         pass
-
-    # Save the map at the end of exploration
-    # robot_slam.save_map("my_robot_map")
 
     rospy.loginfo("Exploration and map saving complete.")
     rospy.signal_shutdown("Exploration and map saving complete.")
