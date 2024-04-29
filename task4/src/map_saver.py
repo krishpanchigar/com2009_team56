@@ -9,7 +9,7 @@ rospy.init_node("map saver node", anonymous=True)
 rate = rospy.Rate(0.5)
 
 launch = roslaunch.scriptapi.ROSLaunch()
-launch.start
+launch.start()
 
 print(f"Saving map file at time: {rospy.get_time()}...")
 node = roslaunch.core.Node(
