@@ -53,8 +53,11 @@
   <node name="rqt_image_view" pkg="rqt_image_view" type="rqt_image_view" args="--perspective /camera/rgb/image_raw"/>
 
   <!-- Python node -->
-  <arg name="target_colour"/>
-  <node pkg="com2009_team56" type="exploration" name="exploration" args="$ (arg target_colour)"/>
+  <arg name="target_colour" default="green"/>
+
+  <node pkg="com2009_team56" type="exploration" name="exploration" output="screen">
+      <param name="target_colour" value="$(arg target_colour)"/>
+  </node>
 
 
 </launch>

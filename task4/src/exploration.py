@@ -19,7 +19,7 @@ from tb3 import Tb3Move
 
 class RobotSLAM:
     def __init__(self):
-        rospy.init_node('robot_slam', anonymous=False)
+        rospy.init_node('exploration', anonymous=False)
 
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
         self.client.wait_for_server()
@@ -48,7 +48,7 @@ class RobotSLAM:
 
         self.color_detections = {}
 
-        self.target_color = rospy.get_param('~target_colour', 'green')
+        self.target_colour = rospy.get_param('~target_colour', 'green')
 
         self.color_ranges = {
             'green': ((81, 175, 0), (92, 255, 255)),
@@ -56,7 +56,7 @@ class RobotSLAM:
             'red': ((0, 175, 0), (7, 255, 255)),
             'yellow': ((23, 175, 0), (28, 250, 255)),
         }
-        rospy.loginfo("Target Colour: %s", self.target_color)
+        rospy.loginfo("Target Colour: %s", self.target_colour)
 
     def set_initial_pose(self, x, y, theta):
         initial_pose = PoseWithCovarianceStamped()
@@ -122,6 +122,14 @@ class RobotSLAM:
                 print(f"Detected {color} at y-position {self.cy}")
                 self.color_detections[color] = (self.m00, self.cy)
 
+                if color == self.target_colour:
+                    snaps_dir = f"com2009_team56/snaps"
+                    if not os.path.exists(snaps_dir):
+                        os.makedirs(snaps_dir)
+                    filepath = os.path.join(snaps_dir, "task4_beacon.jpg")
+                    cv2.imwrite(filepath, crop_img)
+                    print(f"Photo taken and saved as {filepath}")
+
                 contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 if contours:
                     largest_contour = max(contours, key=cv2.contourArea)
@@ -136,13 +144,6 @@ class RobotSLAM:
 
                     print(f"Estimated distance: {distance_m} m")
             
-            if color == self.target_color:
-                    snaps_dir = f"com2009_team56/snaps"
-                    if not os.path.exists(snaps_dir):
-                        os.makedirs(snaps_dir)
-                    filepath = os.path.join(snaps_dir, "task4_beacon.jpg")
-                    cv2.imwrite(filepath, crop_img)
-                    print(f"Photo taken and saved as {filepath}")
 
         cv2.imshow('cropped image', crop_img)
         cv2.waitKey(1) 
