@@ -48,7 +48,7 @@ class RobotSLAM:
 
         self.color_detections = {}
 
-        self.target_colour = rospy.get_param('~target_colour', 'green')
+        self.target_color = rospy.get_param('~target_colour', 'green')
 
         self.color_ranges = {
             'green': ((81, 175, 0), (92, 255, 255)),
@@ -56,7 +56,7 @@ class RobotSLAM:
             'red': ((0, 175, 0), (7, 255, 255)),
             'yellow': ((23, 175, 0), (28, 250, 255)),
         }
-        rospy.loginfo("Target Colour: %s", self.target_colour)
+        rospy.loginfo("Target Colour: %s", self.target_color)
 
     def set_initial_pose(self, x, y, theta):
         initial_pose = PoseWithCovarianceStamped()
@@ -135,6 +135,15 @@ class RobotSLAM:
                     distance_m = distance_mm / 1000
 
                     print(f"Estimated distance: {distance_m} m")
+            
+            if color == self.target_color:
+                    snaps_dir = f"com2009_team56/snaps"
+                    if not os.path.exists(snaps_dir):
+                        os.makedirs(snaps_dir)
+                    filepath = os.path.join(snaps_dir, "task4_beacon.jpg")
+                    cv2.imwrite(filepath, crop_img)
+                    print(f"Photo taken and saved as {filepath}")
+
         cv2.imshow('cropped image', crop_img)
         cv2.waitKey(1) 
 
