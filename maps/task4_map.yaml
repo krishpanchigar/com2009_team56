@@ -1,4 +1,4 @@
-image: task2.pgm
+image: /home/student/catkin_ws/src/com2009_team56/maps/task4_map.pgm
 resolution: 0.050000
 origin: [-10.000000, -10.000000, 0.000000]
 negate: 0
