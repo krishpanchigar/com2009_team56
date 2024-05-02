@@ -25,12 +25,46 @@ class FrontierExploration:
         self.robot_controller = Tb3Move()
 
         self.current_map = None
+        self.frontiers = None
 
     def map_callback(self, map_data):
         self.current_map = map_data
-        print(map_data.info)
-        print(map_data.data)
+        self.identify_frontiers()
+        print(len(self.frontiers))
+        
 
-    def identify_frontiers(self, map_data):
+    def identify_frontiers(self):
         # Identify frontiers in the map
-        pass
+        occupancy_grid = self.current_map
+        width = occupancy_grid.info.width
+        height = occupancy_grid.info.height
+        map_data = occupancy_grid.data
+
+        self.frontiers = set()
+
+        # iterating over the map data
+        for y in range(height):
+            for x in range(width):
+                # index of cell
+                i = y * width + x
+
+                if map_data[i] == 0:
+                    # check for neighbouring cells
+                    for dx in [-1, 0, 1]:
+                        for dy in [-1, 0, 1]:
+                            ni = (y + dy) * width + (x + dx)
+
+                            if(0 <= ni < len(map_data) and map_data[ni] == -1):
+                                self.frontiers.add((x, y))
+                                break
+    
+    def main(self):
+        self.identify_frontiers()
+
+        
+
+
+if __name__ == "__main__":
+    explorer = FrontierExploration()
+    explorer.main()
+    
