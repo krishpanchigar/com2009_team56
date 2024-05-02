@@ -48,12 +48,15 @@ class RobotSLAM:
 
         self.color_detections = {}
 
+        self.target_colour = rospy.get_param('~target_colour', 'green')
+
         self.color_ranges = {
             'green': ((81, 175, 0), (92, 255, 255)),
             'blue': ((115, 224, 100), (130, 255, 255)),
             'red': ((0, 175, 0), (7, 255, 255)),
             'yellow': ((23, 175, 0), (28, 250, 255)),
         }
+        rospy.loginfo("Target Colour: %s", self.target_colour)
 
     def set_initial_pose(self, x, y, theta):
         initial_pose = PoseWithCovarianceStamped()
@@ -171,6 +174,7 @@ class RobotSLAM:
 
             self.robot_controller.publish()
             self.rate.sleep()
+            
 
 # Main execution
 if __name__ == '__main__':
