@@ -150,43 +150,50 @@ class RobotSLAM:
 
 
     def main(self):
+        self.color_detected_last_cycle = False 
+
         while not self.ctrl_c:
             if self.stop_counter > 0:
                 self.stop_counter -= 1
+                print(f"Stopping, counter: {self.stop_counter}")
 
             detected = False
-
             for color, (m00, cy) in self.color_detections.items():
                 if m00 > self.m00_min:
                     if 460 <= cy <= 660:
+                        if self.move_rate != 'stop':
+                            print(f"STOPPED: {color} detected at center")
                         self.move_rate = 'stop'
-                        self.stop_counter = 30 
-                        print(f"STOPPED: The blob of {color} is now dead-ahead at y-position {cy} pixels... Counting down: {self.stop_counter}")
+                        if not self.color_detected_last_cycle: 
+                            self.stop_counter = 30
+                            self.color_detected_last_cycle = True  
                         detected = True
                         break
                     else:
-                        print(f"MOVING SLOW: A blob of {color} of size {m00:.0f} pixels is in view at y-position: {cy:.0f} pixels.")
+                        print(f"MOVING SLOW: {color} detected but not centered")
                         self.move_rate = 'slow'
                         detected = True
 
-            if not detected: 
+            if not detected:
+                self.color_detected_last_cycle = False
                 if self.move_rate != 'fast':
                     print("MOVING FAST: No relevant objects in view, scanning the area...")
                     self.move_rate = 'fast'
 
-            # Apply the current movement command based on move_rate
-            if self.move_rate == 'stop' and self.stop_counter > 0:
-                self.robot_controller.set_move_cmd(0.0, 0.0)
-            elif self.move_rate == 'slow':
-                self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
-            elif self.move_rate == 'fast':
-                self.robot_controller.set_move_cmd(0.0, self.turn_vel_fast)
+            self.apply_movement()
 
-            self.robot_controller.publish()
-            self.rate.sleep()
-            
+    def apply_movement(self):
+        if self.move_rate == 'stop' and self.stop_counter > 0:
+            self.robot_controller.set_move_cmd(0.0, 0.0)
+        elif self.move_rate == 'slow':
+            self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
+        elif self.move_rate == 'fast':
+            self.robot_controller.set_move_cmd(0.0, self.turn_vel_fast)
 
-# Main execution
+        self.robot_controller.publish()
+        self.rate.sleep()
+
+
 if __name__ == '__main__':
     robot_slam = RobotSLAM()
     
