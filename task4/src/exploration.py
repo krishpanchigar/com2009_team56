@@ -137,9 +137,9 @@ class RobotSLAM:
                     cv2.rectangle(crop_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
                     focal_length = 1206.8897719532354   
-                    real_object_height = 70  
+                    real_object_width = 200  
 
-                    distance_mm = (focal_length * real_object_height) / h
+                    distance_mm = (focal_length * real_object_width) / w
                     distance_m = distance_mm / 1000
 
                     print(f"Estimated distance: {distance_m} m")
