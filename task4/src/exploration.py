@@ -7,6 +7,7 @@ import actionlib
 import os
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from geometry_msgs.msg import PoseWithCovarianceStamped, Quaternion
+from tf.transformations import euler_from_quaternion
 from nav_msgs.msg import Odometry
 
 # Import some image processing modules:
@@ -25,6 +26,7 @@ class RobotSLAM:
         self.client.wait_for_server()
 
         self.initial_pose_pub = rospy.Publisher('initialpose', PoseWithCovarianceStamped, queue_size=1)
+        self.odometry_sub = rospy.Subscriber('/odom', Odometry, self.odometry_callback)
 
         self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw",
             Image, self.camera_callback)
@@ -68,6 +70,14 @@ class RobotSLAM:
         
         self.initial_pose_pub.publish(initial_pose)
         rospy.sleep(1)
+    
+    def odometry_callback(self, msg):
+        orientation_quaternion = msg.pose.pose.orientation
+        orientation_list = [orientation_quaternion.x, orientation_quaternion.y, orientation_quaternion.z, orientation_quaternion.w]
+        roll, pitch, yaw = euler_from_quaternion(orientation_list)
+        self.robot_position = msg.pose.pose.position
+
+        self.robot_yaw = yaw
 
     def move_to_goal(self, x, y):
         goal = MoveBaseGoal()
@@ -120,7 +130,6 @@ class RobotSLAM:
             if self.m00 > self.m00_min: 
                 cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 2)
                 print(f"Detected {color} at y-position {self.cy}")
-                self.color_detections[color] = (self.m00, self.cy)
 
                 if color == self.target_colour:
                     snaps_dir = f"com2009_team56/snaps"
@@ -131,18 +140,30 @@ class RobotSLAM:
                     print(f"Photo taken and saved as {filepath}")
 
                 contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                if contours:
-                    largest_contour = max(contours, key=cv2.contourArea)
-                    x, y, w, h = cv2.boundingRect(largest_contour)
-                    cv2.rectangle(crop_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                for contour in contours:
+                    contour_area = cv2.contourArea(contour)
 
-                    focal_length = 1206.8897719532354   
-                    real_object_width = 200  
+                    if contour_area > 100:
+                        largest_contour = max(contours, key=cv2.contourArea)
+                        x, y, w, h = cv2.boundingRect(largest_contour)
+                        cv2.rectangle(crop_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
-                    distance_mm = (focal_length * real_object_width) / w
-                    distance_m = distance_mm / 1000
+                        focal_length = 1206.8897719532354   
+                        real_object_width = 200  
 
-                    print(f"Estimated distance: {distance_m} m")
+                        distance_mm = (focal_length * real_object_width) / w
+                        distance_m = distance_mm / 1000
+
+                        print(f"Estimated distance: {distance_m} m")
+
+                        object_x = distance_m * math.cos(self.robot_yaw)
+                        object_y = distance_m * math.sin(self.robot_yaw)
+
+                        object_x_global = self.robot_position.x + object_x
+                        object_y_global = self.robot_position.y + object_y
+                        
+                        rospy.loginfo("Object position: x=%f, y=%f", object_x_global, object_y_global)
+                        self.color_detections[color] = (self.m00, self.cy)
             
 
         cv2.imshow('cropped image', crop_img)
