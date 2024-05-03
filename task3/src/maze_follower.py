@@ -32,8 +32,10 @@ class MazeFollower(object):
             print("Going forward")
             self.motion.set_velocity(self.fwd_vel, 0)
             self.motion.publish_velocity()
+            front_dist = min(self.lidar.subsets.frontArray)
         self.stop()
         time.sleep(1)
+        return
 
     def adjustToRightWall(self):
         right_wall_dist = min(self.lidar.subsets.r3Array)
@@ -51,24 +53,23 @@ class MazeFollower(object):
 
     def turn_90(self, direction):
         current_yaw = self.odom.yaw
+        print(f"Current yaw: {current_yaw}")
 
         if direction == "right":
-            target_yaw = current_yaw - math.pi / 2
+            
+            target_yaw = current_yaw - 90
             ang_vel = -self.ang_vel
         elif direction == "left":
-            target_yaw = current_yaw + math.pi / 2
+            target_yaw = current_yaw + 90
             ang_vel = self.ang_vel
 
-        # normalising the target value between -pi and pi
-        while target_yaw > math.pi:
-            target_yaw -= 2 * math.pi
-        while target_yaw < -math.pi:
-            target_yaw += 2 * math.pi
+        print(f"Target yaw: {target_yaw}")
+        
 
-        while abs(self.odom.yaw - target_yaw) > 0.01:
+        while abs(self.odom.yaw - target_yaw) > 1:
+            self.odom.show()
             self.motion.set_velocity(0.0, ang_vel)
             self.motion.publish_velocity()
-            self.rate.sleep()
         
         self.stop()
 
@@ -104,14 +105,17 @@ class MazeFollower(object):
             self.right_wall = min(self.lidar.subsets.r3Array)
             self.left_wall = min(self.lidar.subsets.l3Array)
             self.front_wall = min(self.lidar.subsets.frontArray)
-
+            # TODO: turn right is being called multiple times cos there isnt wall on the right of the thingy
+            # TODO: turn 90 can be improved by using odom data better somehow
             # if there is no wall on the right, turn right
             if self.right_wall > 0.4:
                 self.stop()
                 self.turn_90("right")
+                print("Turning right")
             # if there is wall in front and a wall on the right, turn left
             elif self.front_wall < 0.4:
                 self.turn_90("left")
+                print("Turning left")
             # if there is no wall in the front, and there is a right wall, keep going forward
             else:
                 self.moveForward()
