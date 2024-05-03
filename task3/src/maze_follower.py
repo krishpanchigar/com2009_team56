@@ -70,8 +70,7 @@ class MazeFollower(object):
             self.motion.publish_velocity()
             self.rate.sleep()
         
-        self.motion.stop()
-        self.motion.publish_velocity()
+        self.stop()
 
     def turn(self, angle):
         self.motion.set_velocity(0.0, angle)
@@ -84,8 +83,7 @@ class MazeFollower(object):
                 stop = True
             else:
                 frontLast = frontCurrent
-        self.motion.stop()
-        self.motion.publish_velocity()
+        self.stop()
     
     def correction(self):
         if min(self.lidar.subsets.r3Array) < 0.5 and min(self.lidar.subsets.l3Array) < 0.5:
@@ -101,41 +99,23 @@ class MazeFollower(object):
             
 
     def run(self):
-        self.motion.set_velocity(self.fwd_vel, 0.0)
-        self.motion.publish_velocity()
-        self.left_wall_control = min(self.lidar.subsets.l3Array)
-        self.right_wall_control = min(self.lidar.subsets.r3Array)
-        # Following right wall
+        self.moveForward()
         while not rospy.is_shutdown():
-            self.left_wall = min(self.lidar.subsets.l3Array)
             self.right_wall = min(self.lidar.subsets.r3Array)
-            
-            # Keeping the turtle within the error
-            self.correction()
-            
-            if min(self.lidar.subsets.frontArray) < 0.4:
-                #Check for where walls are:
-                self.motion.stop()
-                self.motion.publish_velocity()
-                
-                if min(self.lidar.subsets.r3Array) > 0.4:
-                    print('No right wall detected. Turning right')
-                    self.turn(-self.ang_vel)
-                else:
-                    print('Right wall detected')
-                    if min(self.lidar.subsets.l3Array) > 0.4:
-                        print('No left wall detected. Turning left')
-                        self.turn(self.ang_vel) 
-                    else:
-                        print('Left wall detected')
-                        print('Dead end')
-                        self.motion.set_velocity(0.0, -self.ang_vel)
-                        self.motion.publish_velocity()
-                        time.sleep(2*self.turn_time)
-                        break
-                
-                self.motion.stop()
-                self.motion.publish_velocity()
+            self.left_wall = min(self.lidar.subsets.l3Array)
+            self.front_wall = min(self.lidar.subsets.frontArray)
+
+            # if there is no wall on the right, turn right
+            if self.right_wall > 0.4:
+                self.stop()
+                self.turn_90("right")
+            # if there is wall in front and a wall on the right, turn left
+            elif self.front_wall < 0.4:
+                self.turn_90("left")
+            # if there is no wall in the front, and there is a right wall, keep going forward
+            else:
+                self.moveForward()
+
             
         
 if __name__ == '__main__':
