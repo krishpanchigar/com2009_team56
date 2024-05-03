@@ -6,7 +6,7 @@ import tf
 import actionlib
 import os
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
-from geometry_msgs.msg import PoseWithCovarianceStamped, Quaternion
+from geometry_msgs.msg import PoseWithCovarianceStamped, Quaternion, PoseStamped
 from tf.transformations import euler_from_quaternion
 from nav_msgs.msg import Odometry
 
@@ -27,6 +27,7 @@ class RobotSLAM:
 
         self.initial_pose_pub = rospy.Publisher('initialpose', PoseWithCovarianceStamped, queue_size=1)
         self.odometry_sub = rospy.Subscriber('/odom', Odometry, self.odometry_callback)
+        self.pub_goal = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)    
 
         self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw",
             Image, self.camera_callback)
@@ -159,10 +160,10 @@ class RobotSLAM:
                         object_x = distance_m * math.cos(self.robot_yaw)
                         object_y = distance_m * math.sin(self.robot_yaw)
 
-                        object_x_global = self.robot_position.x + object_x
-                        object_y_global = self.robot_position.y + object_y
+                        self.object_x_global = self.robot_position.x + object_x
+                        self.object_y_global = self.robot_position.y + object_y
                         
-                        rospy.loginfo("Object position: x=%f, y=%f", object_x_global, object_y_global)
+                        rospy.loginfo("Object position: x=%f, y=%f", self.object_x_global, self.object_y_global)
                         self.color_detections[color] = (self.m00, self.cy)
             
 
@@ -172,11 +173,14 @@ class RobotSLAM:
 
     def main(self):
         self.color_detected_last_cycle = False 
+        self.waypoint_ready = False
 
         while not self.ctrl_c:
             if self.stop_counter > 0:
                 self.stop_counter -= 1
                 print(f"Stopping, counter: {self.stop_counter}")
+            # elif self.stop_counter == 0 and self.waypoint_ready:
+            #     self.move_to_waypoint()
 
             detected = False
             for color, (m00, cy) in self.color_detections.items():
@@ -187,8 +191,10 @@ class RobotSLAM:
                         self.move_rate = 'stop'
                         if not self.color_detected_last_cycle: 
                             self.stop_counter = 30
-                            self.color_detected_last_cycle = True  
+                            self.color_detected_last_cycle = True 
+                            self.waypoint_ready = True
                         detected = True
+                        
                         break
                     else:
                         print(f"MOVING SLOW: {color} detected but not centered")
@@ -202,6 +208,16 @@ class RobotSLAM:
                     self.move_rate = 'fast'
 
             self.apply_movement()
+
+    # def move_to_waypoint(self):
+    #     waypoints = [(self.object_x_global,self.object_y_global)]
+    #     for point in waypoints:
+    #         result = robot_slam.move_to_goal(point[0], point[1])
+    #         if result:
+    #             rospy.loginfo("Reached waypoint %s", point)
+    #         else:
+    #             rospy.loginfo("Failed to reach waypoint %s", point)
+    #     self.waypoint_ready = False 
 
     def apply_movement(self):
         if self.move_rate == 'stop' and self.stop_counter > 0:
