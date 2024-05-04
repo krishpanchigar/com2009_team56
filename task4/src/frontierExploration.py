@@ -4,8 +4,12 @@ import rospy
 import tf
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
-from geometry_msgs.msg import PoseWithCovarianceStamped, Quaternion
-from nav_msgs.msg import Odometry, OccupancyGrid
+from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, Point
+from nav_msgs.msg import OccupancyGrid
+import math
+
+import waffle
+
 
 from tf.transformations import quaternion_from_euler
 
@@ -22,10 +26,12 @@ class FrontierExploration:
 
         self.map_subscriber = rospy.Subscriber("/map", OccupancyGrid, self.map_callback)
 
-        self.robot_controller = Tb3Move()
+        self.motion = waffle.Motion
+        self.odom = waffle.Pose(debug=True)
 
         self.current_map = None
         self.frontiers = None
+        self.closest_frontier = None
 
     def map_callback(self, map_data):
         self.current_map = map_data
@@ -58,8 +64,34 @@ class FrontierExploration:
                                 self.frontiers.add((x, y))
                                 break
     
+    def get_closest_frontier(self):
+        pos_x = self.odom.posx
+        pos_y = self.odom.posy
+
+        min_dist = float('inf')
+        for frontier in self.frontiers:
+            distance = math.sqrt((frontier[0] - pos_x) ** 2 + (frontier[1] - pos_y) ** 2)
+            if distance < min_dist:
+                min_dist = distance
+                self.closest_frontier = frontier
+
+    def navigate_to_frontier(self, frontier):
+        goal = PoseStamped()
+        goal.header.frame_id = 'map'
+        goal.pose.position = Point(frontier[0], frontier[1], 0)
+        goal.pose.orientation.w = 1.0
+
+        goal_publisher = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=1)
+        rospy.sleep(1)
+
+        goal_publisher.publish(goal)
+
+        
+    
     def main(self):
         self.identify_frontiers()
+        self.get_closest_frontier()
+        self.navigate_to_frontier(self.closest_frontier)
 
         
 

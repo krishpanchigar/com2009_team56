@@ -16,7 +16,7 @@ class MazeFollower(object):
         self.lidar = waffle.Lidar(debug=True)
         self.odom = waffle.Pose(debug=True)
         self.error = 0.08
-        self.fwd_vel = 0.15
+        self.fwd_vel = 0.2
         self.ang_vel = math.pi/6
         self.turn_time = 1.3
         self.right_wall_desired_dist = 0.4
