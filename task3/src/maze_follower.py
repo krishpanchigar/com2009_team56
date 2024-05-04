@@ -1,6 +1,7 @@
 #!/usr/bin/env python3 
 
 from distutils.log import error
+from turtle import left, right
 import rospy
 from tb3 import Tb3Move, Tb3Odometry, Tb3LaserScan
 import waffle
@@ -23,51 +24,58 @@ class MazeFollower(object):
     
     def stop(self):
         self.motion.stop()
-        self.motion.publish_velocity()
         time.sleep(1)
+
+    def correction(self):
+        left_wall = min(self.lidar.subsets.l3Array)
+        right_wall = min(self.lidar.subsets.r3Array)
+        if right_wall < 0.4 and left_wall < 0.4:
+            average_dist = (left_wall + right_wall) / 2 
+
+            error_left = average_dist - left_wall
+            error_right = average_dist - right_wall
+
+            # since turning left is positive and right is negative
+            correction = error_right - error_left
+        else:
+            if right_wall < 0.4:
+                correction = 0.25 - right_wall
+            elif left_wall < 0.4:
+                correction = 0.25 - left_wall
+            else:
+                correction = 0
+        
+        self.motion.set_velocity(self.fwd_vel, correction)
+        self.motion.publish_velocity()
+
 
     def moveForward(self):
         front_dist = min(self.lidar.subsets.frontArray)
-        while front_dist > 0.4:
+        while front_dist > 0.35:
             print("Going forward")
-            self.motion.set_velocity(self.fwd_vel, 0)
-            self.motion.publish_velocity()
+            self.correction()
             front_dist = min(self.lidar.subsets.frontArray)
         self.stop()
         time.sleep(1)
         return
 
-    def adjustToRightWall(self):
-        right_wall_dist = min(self.lidar.subsets.r3Array)
-
-        if right_wall_dist < self.right_wall_desired_dist - self.error:
-            # if robot is close to the wall, turn left
-            self.motion.set_velocity(0.0, self.ang_vel)
-        elif right_wall_dist > self.right_wall_desired_dist + self.error:
-            # if robot is far from right wall, turn right
-            self.motion.set_velocity(0.0, -self.ang_vel)
-        else:
-            self.motion.set(self.fwd_vel, 0.0)
-        
-        self.motion.publish_velocity()
-
     def turn_90(self, direction):
         current_yaw = self.odom.yaw
-        print(f"Current yaw: {current_yaw}")
+        rounded_yaw = round(current_yaw / 90) * 90
+        print(f"Rounded yaw: {rounded_yaw}")
 
         if direction == "right":
             
-            target_yaw = current_yaw - 90
+            target_yaw = rounded_yaw - 90
             ang_vel = -self.ang_vel
         elif direction == "left":
-            target_yaw = current_yaw + 90
+            target_yaw = rounded_yaw + 90
             ang_vel = self.ang_vel
 
-        print(f"Target yaw: {target_yaw}")
+        rospy.loginfo(f"Target yaw: {target_yaw}")
         
 
         while abs(self.odom.yaw - target_yaw) > 1:
-            self.odom.show()
             self.motion.set_velocity(0.0, ang_vel)
             self.motion.publish_velocity()
         
@@ -85,23 +93,12 @@ class MazeFollower(object):
             else:
                 frontLast = frontCurrent
         self.stop()
-    
-    def correction(self):
-        if min(self.lidar.subsets.r3Array) < 0.5 and min(self.lidar.subsets.l3Array) < 0.5:
-            if self.right_wall > self.right_wall_control + self.error:
-                self.motion.set_velocity(self.fwd_vel, -self.ang_vel)
-                print('right')
-            elif self.right_wall < self.right_wall_control - self.error:
-                self.motion.set_velocity(self.fwd_vel, self.ang_vel)
-                print('left')
-            else:
-                self.motion.set_velocity(self.fwd_vel, 0.0)
-                print('fwd')
             
 
     def run(self):
         self.moveForward()
         while not rospy.is_shutdown():
+            self.lidar.subsets.show()
             self.right_wall = min(self.lidar.subsets.r3Array)
             self.left_wall = min(self.lidar.subsets.l3Array)
             self.front_wall = min(self.lidar.subsets.frontArray)
@@ -111,11 +108,13 @@ class MazeFollower(object):
             if self.right_wall > 0.4:
                 self.stop()
                 self.turn_90("right")
+                self.moveForward()
                 print("Turning right")
             # if there is wall in front and a wall on the right, turn left
             elif self.front_wall < 0.4:
                 self.turn_90("left")
                 print("Turning left")
+                self.moveForward()
             # if there is no wall in the front, and there is a right wall, keep going forward
             else:
                 self.moveForward()
