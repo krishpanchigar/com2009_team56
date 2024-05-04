@@ -35,8 +35,6 @@ class FrontierExploration:
 
     def map_callback(self, map_data):
         self.current_map = map_data
-        self.identify_frontiers()
-        print(len(self.frontiers))
         
 
     def identify_frontiers(self):
@@ -63,6 +61,7 @@ class FrontierExploration:
                             if(0 <= ni < len(map_data) and map_data[ni] == -1):
                                 self.frontiers.add((x, y))
                                 break
+        print(len(self.frontiers))
     
     def get_closest_frontier(self):
         pos_x = self.odom.posx
@@ -74,6 +73,7 @@ class FrontierExploration:
             if distance < min_dist:
                 min_dist = distance
                 self.closest_frontier = frontier
+        print(self.closest_frontier)
 
     def navigate_to_frontier(self, frontier):
         goal = PoseStamped()
@@ -83,12 +83,16 @@ class FrontierExploration:
 
         goal_publisher = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=1)
         rospy.sleep(1)
-
+        print("publishing goal")
         goal_publisher.publish(goal)
 
         
     
     def main(self):
+        while self.current_map is None and not rospy.is_shutdown():
+            rospy.loginfo("Waiting for map...")
+            rospy.sleep(1)
+
         self.identify_frontiers()
         self.get_closest_frontier()
         self.navigate_to_frontier(self.closest_frontier)
