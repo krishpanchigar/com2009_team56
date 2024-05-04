@@ -7,6 +7,7 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, Point
 from nav_msgs.msg import OccupancyGrid
 import math
+import random
 
 import waffle
 
@@ -66,19 +67,47 @@ class FrontierExploration:
     def get_closest_frontier(self):
         pos_x = self.odom.posx
         pos_y = self.odom.posy
+        occupancy_grid = self.current_map
+        width = occupancy_grid.info.width
+        height = occupancy_grid.info.height
+        map_data = occupancy_grid.data
 
-        min_dist = float('inf')
+        max_unexplored = 0
+        best_frontier = None
+        
         for frontier in self.frontiers:
-            distance = math.sqrt((frontier[0] - pos_x) ** 2 + (frontier[1] - pos_y) ** 2)
-            if distance < min_dist:
-                min_dist = distance
-                self.closest_frontier = frontier
+            unexplored_count = 0
+
+            for dx in [-3, -2, -1, 0, 1, 2, 3]:
+                for dy in [-3, -2, -1, 0, 1, 2, 3]:
+                    x = frontier[0] + dx
+                    y = frontier[1] + dy
+                    i = y * width + x
+
+                    if 0 <= i < len(map_data) and map_data[i] == -1:
+                        unexplored_count += 1
+            
+            if unexplored_count > max_unexplored:
+                max_unexplored = unexplored_count
+                best_frontier = frontier
+
+        self.closest_frontier = best_frontier
         print(self.closest_frontier)
+
+    def get_random_frontier(self):
+        self.closest_frontier = random.choice(list(self.frontiers))
+        print(self.closest_frontier)
+
 
     def navigate_to_frontier(self, frontier):
         goal = PoseStamped()
         goal.header.frame_id = 'map'
-        goal.pose.position = Point(frontier[0], frontier[1], 0)
+        goal.header.stamp = rospy.Time.now()
+        resolution = self.current_map.info.resolution
+        origin = self.current_map.info.origin.position
+        print(f"Resolution: {resolution}")
+        print(f"origin: {origin}")
+        goal.pose.position = Point(frontier[0] * resolution + origin.x, frontier[1] * resolution + origin.y, 0)
         goal.pose.orientation.w = 1.0
 
         goal_publisher = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=1)
@@ -92,10 +121,13 @@ class FrontierExploration:
         while self.current_map is None and not rospy.is_shutdown():
             rospy.loginfo("Waiting for map...")
             rospy.sleep(1)
-
-        self.identify_frontiers()
-        self.get_closest_frontier()
-        self.navigate_to_frontier(self.closest_frontier)
+        
+        while not rospy.is_shutdown():
+            self.identify_frontiers()
+            print(len(self.frontiers))
+            self.get_closest_frontier()
+            self.navigate_to_frontier(self.closest_frontier)
+            rospy.sleep(10)
 
         
 
