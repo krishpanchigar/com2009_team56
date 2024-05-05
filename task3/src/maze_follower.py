@@ -2,6 +2,8 @@
 
 from distutils.log import error
 from turtle import left, right
+
+import numpy as np
 import rospy
 from tb3 import Tb3Move, Tb3Odometry, Tb3LaserScan
 import waffle
@@ -21,8 +23,11 @@ class MazeFollower(object):
         self.turn_time = 1.3
         self.right_wall_desired_dist = 0.4
         self.error = 0.05
+        self.intended_direction = self.odom.yaw * self.odom.yaw_direction
     
     def stop(self):
+        self.motion.set_velocity(self.fwd_vel, 0.0)
+        self.motion.publish_velocity()
         self.motion.stop()
         time.sleep(1)
 
@@ -38,30 +43,40 @@ class MazeFollower(object):
             # since turning left is positive and right is negative
             correction = error_right - error_left
         else:
-            if right_wall < 0.4:
+            if right_wall < 0.4 and right_wall > 0.0:
                 correction = 0.25 - right_wall
-            elif left_wall < 0.4:
+            elif left_wall < 0.4 and left_wall > 0.0:
                 correction = 0.25 - left_wall
             else:
                 correction = 0
         
-        self.motion.set_velocity(self.fwd_vel, correction)
+        self.motion.set_velocity(self.fwd_vel, correction/1.5)
         self.motion.publish_velocity()
 
 
     def moveForward(self):
         front_dist = min(self.lidar.subsets.frontArray)
-        while front_dist > 0.35:
+        while front_dist > 0.4:
             print("Going forward")
             self.correction()
             front_dist = min(self.lidar.subsets.frontArray)
         self.stop()
         time.sleep(1)
         return
+    
+    def face_wall(self):
+        sign = np.sign((self.odom.yaw * self.odom.yaw_direction) - self.intended_direction)
+        while abs((self.odom.yaw * self.odom.yaw_direction) - self.intended_direction) > 0.5:
+            self.motion.set_velocity(0.0, (sign * self.ang_vel))
+            self.motion.publish_velocity()
+        
 
     def turn_90(self, direction):
+        # TODO Fix turning logic!!
+        self.face_wall()
         current_yaw = self.odom.yaw
         rounded_yaw = round(current_yaw / 90) * 90
+        print(f"Current yaw: {current_yaw}")
         print(f"Rounded yaw: {rounded_yaw}")
 
         if direction == "right":
@@ -72,27 +87,16 @@ class MazeFollower(object):
             target_yaw = rounded_yaw + 90
             ang_vel = self.ang_vel
 
-        rospy.loginfo(f"Target yaw: {target_yaw}")
+        print(f"Target yaw: {target_yaw}")
         
 
-        while abs(self.odom.yaw - target_yaw) > 1:
+        while abs((self.odom.yaw * self.odom.yaw_direction) - target_yaw) > 0.5:
+            print(self.odom.yaw, self.odom.yaw_direction)
             self.motion.set_velocity(0.0, ang_vel)
             self.motion.publish_velocity()
         
         self.stop()
-
-    def turn(self, angle):
-        self.motion.set_velocity(0.0, angle)
-        self.motion.publish_velocity()
-        stop = False
-        frontLast = min(self.lidar.subsets.frontArray)
-        while not stop:
-            frontCurrent = min(self.lidar.subsets.frontArray)
-            if frontCurrent < frontLast:
-                stop = True
-            else:
-                frontLast = frontCurrent
-        self.stop()
+        self.intended_direction = target_yaw
             
 
     def run(self):
@@ -102,7 +106,7 @@ class MazeFollower(object):
             self.right_wall = min(self.lidar.subsets.r3Array)
             self.left_wall = min(self.lidar.subsets.l3Array)
             self.front_wall = min(self.lidar.subsets.frontArray)
-            # TODO: turn right is being called multiple times cos there isnt wall on the right of the thingy
+            # TODO: fix correction algorithm
             # TODO: turn 90 can be improved by using odom data better somehow
             # if there is no wall on the right, turn right
             if self.right_wall > 0.4:
@@ -118,8 +122,7 @@ class MazeFollower(object):
             # if there is no wall in the front, and there is a right wall, keep going forward
             else:
                 self.moveForward()
-
-            
+                
         
 if __name__ == '__main__':
     rospy.init_node('maze_follower')
