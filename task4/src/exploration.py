@@ -49,16 +49,14 @@ class RobotSLAM:
         self.m00 = 0
         self.m00_min = 10000
 
-        self.color_detections = {}
-
         self.target_colour = rospy.get_param('~target_colour', 'green')
 
-        self.color_ranges = {
-            'green': ((81, 175, 0), (92, 255, 255)),
-            'blue': ((115, 224, 100), (130, 255, 255)),
-            'red': ((0, 175, 0), (7, 255, 255)),
-            'yellow': ((23, 175, 0), (28, 250, 255)),
-        }
+        # self.color_ranges = {
+        #     'green': ((81, 175, 0), (92, 255, 255)),
+        #     'blue': ((115, 224, 100), (130, 255, 255)),
+        #     'red': ((0, 175, 0), (7, 255, 255)),
+        #     'yellow': ((23, 175, 0), (28, 250, 255)),
+        # }
         rospy.loginfo("Target Colour: %s", self.target_colour)
 
     def set_initial_pose(self, x, y, theta):
@@ -96,10 +94,6 @@ class RobotSLAM:
         else:
             return self.client.get_result()
 
-    def save_map(self, map_name):
-        map_saver_command = "rosrun map_server map_saver -f " + map_name
-        os.system(map_saver_command)
-
     def shutdown_ops(self):
         self.robot_controller.stop()
         cv2.destroyAllWindows()
@@ -109,127 +103,93 @@ class RobotSLAM:
         try:
             cv_img = self.cvbridge_interface.imgmsg_to_cv2(img_data, desired_encoding="bgr8")
         except CvBridgeError as e:
-            print(e)
+            rospy.logerr(e)
 
         height, width, _ = cv_img.shape
         crop_width = width - 800
         crop_height = 300
-        crop_x = int((width/2) - (crop_width/2))
-        crop_y = int((height/2) - (crop_height/2))
-
-        crop_img = cv_img[crop_y:crop_y+crop_height, crop_x:crop_x+crop_width]
+        crop_x = int((width / 2) - (crop_width / 2))
+        crop_y = int((height / 2) - (crop_height / 2))
+        crop_img = cv_img[crop_y:crop_y + crop_height, crop_x:crop_x + crop_width]
         hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
+
+        if self.target_colour == "green":
+            lower = (81, 175, 0)
+            upper = (92, 255, 255)
+        elif self.target_colour == "red":
+            lower = (0, 175, 0)
+            upper = (7, 255, 255)
+        elif self.target_colour == "yellow":
+            lower = (23, 175, 0)
+            upper = (28, 250, 255)
+        elif self.target_colour == "blue":
+            lower = (115, 224, 100)
+            upper = (130, 255, 255)
+
+        mask = cv2.inRange(hsv_img, lower, upper)
+        m = cv2.moments(mask)
+
+        self.m00 = m['m00']
+        self.cy = m['m10'] / (m['m00'] + 1e-5)
+
+        if self.m00 > self.m00_min:
+            cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 2)
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours:
+                largest_contour = max(contours, key=cv2.contourArea)
+                if cv2.contourArea(largest_contour) > 100:
+                    x, y, w, h = cv2.boundingRect(largest_contour)
+                    cv2.rectangle(crop_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                    focal_length = 1206.8897719532354
+                    real_object_width = 200
+                    distance_mm = (focal_length * real_object_width) / w
+                    distance_m = distance_mm / 1000
+                    rospy.loginfo(f"Estimated distance: {distance_m} m")
+
+                    object_x = distance_m * math.cos(self.robot_yaw)
+                    object_y = distance_m * math.sin(self.robot_yaw)
+                    self.object_x_global = self.robot_position.x + object_x
+                    self.object_y_global = self.robot_position.y + object_y
+
+                    rospy.loginfo("Calculated global position: x=%f, y=%f", self.object_x_global, self.object_y_global)
+
+                    self.waypoint_ready = True
         
-        for color, (lower, upper) in self.color_ranges.items():
-            mask = cv2.inRange(hsv_img, lower, upper)
-            result_img = cv2.bitwise_and(crop_img, crop_img, mask=mask)
-            
-            m = cv2.moments(mask)
-            self.m00 = m['m00']
-            self.cy = m['m10'] / (m['m00'] + 1e-5)
-
-            if self.m00 > self.m00_min: 
-                cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 2)
-                print(f"Detected {color} at y-position {self.cy}")
-
-                if color == self.target_colour:
-                    snaps_dir = f"com2009_team56/snaps"
-                    if not os.path.exists(snaps_dir):
-                        os.makedirs(snaps_dir)
-                    filepath = os.path.join(snaps_dir, "task4_beacon.jpg")
-                    cv2.imwrite(filepath, crop_img)
-                    print(f"Photo taken and saved as {filepath}")
-
-                contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                for contour in contours:
-                    contour_area = cv2.contourArea(contour)
-
-                    if contour_area > 100:
-                        largest_contour = max(contours, key=cv2.contourArea)
-                        x, y, w, h = cv2.boundingRect(largest_contour)
-                        cv2.rectangle(crop_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
-
-                        focal_length = 1206.8897719532354   
-                        real_object_width = 200  
-
-                        distance_mm = (focal_length * real_object_width) / w
-                        distance_m = distance_mm / 1000
-
-                        print(f"Estimated distance: {distance_m} m")
-
-                        object_x = distance_m * math.cos(self.robot_yaw)
-                        object_y = distance_m * math.sin(self.robot_yaw)
-
-                        self.object_x_global = self.robot_position.x + object_x
-                        self.object_y_global = self.robot_position.y + object_y
-                        
-                        rospy.loginfo("Object position: x=%f, y=%f", self.object_x_global, self.object_y_global)
-                        self.color_detections[color] = (self.m00, self.cy)
-            
-
         cv2.imshow('cropped image', crop_img)
-        cv2.waitKey(1) 
-
+        cv2.waitKey(1)
 
     def main(self):
-        self.color_detected_last_cycle = False 
-        self.waypoint_ready = False
-
         while not self.ctrl_c:
-            if self.stop_counter > 0:
-                self.stop_counter -= 1
-                print(f"Stopping, counter: {self.stop_counter}")
-            # elif self.stop_counter == 0 and self.waypoint_ready:
-            #     self.move_to_waypoint()
+            # if self.stop_counter > 0:
+            #     self.stop_counter -= 1
 
-            detected = False
-            for color, (m00, cy) in self.color_detections.items():
-                if m00 > self.m00_min:
-                    if 460 <= cy <= 660:
-                        if self.move_rate != 'stop':
-                            print(f"STOPPED: {color} detected at center")
+            if self.m00 > self.m00_min:
+                # blob detected
+                if self.cy >= 560-100 and self.cy <= 560+100:
+                    if self.move_rate == 'slow':
                         self.move_rate = 'stop'
-                        if not self.color_detected_last_cycle: 
-                            self.stop_counter = 30
-                            self.color_detected_last_cycle = True 
-                            self.waypoint_ready = True
-                        detected = True
-                        
-                        break
-                    else:
-                        print(f"MOVING SLOW: {color} detected but not centered")
-                        self.move_rate = 'slow'
-                        detected = True
-
-            if not detected:
-                self.color_detected_last_cycle = False
-                if self.move_rate != 'fast':
-                    print("MOVING FAST: No relevant objects in view, scanning the area...")
-                    self.move_rate = 'fast'
-
-            self.apply_movement()
-
-    # def move_to_waypoint(self):
-    #     waypoints = [(self.object_x_global,self.object_y_global)]
-    #     for point in waypoints:
-    #         result = robot_slam.move_to_goal(point[0], point[1])
-    #         if result:
-    #             rospy.loginfo("Reached waypoint %s", point)
-    #         else:
-    #             rospy.loginfo("Failed to reach waypoint %s", point)
-    #     self.waypoint_ready = False 
-
-    def apply_movement(self):
-        if self.move_rate == 'stop' and self.stop_counter > 0:
-            self.robot_controller.set_move_cmd(0.0, 0.0)
-        elif self.move_rate == 'slow':
-            self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
-        elif self.move_rate == 'fast':
-            self.robot_controller.set_move_cmd(0.0, self.turn_vel_fast)
-
-        self.robot_controller.publish()
-        self.rate.sleep()
-
+                        self.stop_counter = 30
+                else:
+                    self.move_rate = 'slow'
+            else:
+                self.move_rate = 'fast'
+                
+            if self.move_rate == 'fast':
+                print("MOVING FAST: I can't see anything at the moment, scanning the area...")
+                self.robot_controller.set_move_cmd(0.0, self.turn_vel_fast)
+            elif self.move_rate == 'slow':
+                print(f"MOVING SLOW: A blob of colour of size {self.m00:.0f} pixels is in view at y-position: {self.cy:.0f} pixels.")
+                self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
+            elif self.move_rate == 'stop' and self.stop_counter > 0:
+                print(f"STOPPED: The blob of colour is now dead-ahead at y-position {self.cy:.0f} pixels... Counting down: {self.stop_counter}")
+                self.robot_controller.set_move_cmd(0.0, 0.0)
+            else:
+                print(f"MOVING SLOW: A blob of colour of size {self.m00:.0f} pixels is in view at y-position: {self.cy:.0f} pixels.")
+                self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
+            
+            self.robot_controller.publish()
+            self.rate.sleep()
+    
 
 if __name__ == '__main__':
     robot_slam = RobotSLAM()
