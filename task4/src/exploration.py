@@ -43,6 +43,9 @@ class RobotSLAM:
 
         self.ctrl_c = False
         rospy.on_shutdown(self.shutdown_ops)
+        self.target_detected = False
+        self.waypoint_ready = False
+        self.object_position = PoseStamped()
 
         self.rate = rospy.Rate(5)
         
@@ -100,6 +103,8 @@ class RobotSLAM:
         self.ctrl_c = True
 
     def camera_callback(self, img_data):
+        if self.target_detected:
+            return  
         try:
             cv_img = self.cvbridge_interface.imgmsg_to_cv2(img_data, desired_encoding="bgr8")
         except CvBridgeError as e:
@@ -132,7 +137,7 @@ class RobotSLAM:
         self.m00 = m['m00']
         self.cy = m['m10'] / (m['m00'] + 1e-5)
 
-        if self.m00 > self.m00_min:
+        if self.m00 > self.m00_min and (460 <= self.cy <= 660):
             cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 2)
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             if contours:
@@ -145,7 +150,7 @@ class RobotSLAM:
                     distance_mm = (focal_length * real_object_width) / w
                     distance_m = distance_mm / 1000
                     rospy.loginfo(f"Estimated distance: {distance_m} m")
-
+                    
                     object_x = distance_m * math.cos(self.robot_yaw)
                     object_y = distance_m * math.sin(self.robot_yaw)
                     self.object_x_global = self.robot_position.x + object_x
@@ -153,7 +158,13 @@ class RobotSLAM:
 
                     rospy.loginfo("Calculated global position: x=%f, y=%f", self.object_x_global, self.object_y_global)
 
-                    self.waypoint_ready = True
+                    self.object_position.header.frame_id = "map"
+                    self.object_position.header.stamp = rospy.Time.now()
+                    self.object_position.pose.position.x = self.object_x_global
+                    self.object_position.pose.position.y = self.object_y_global
+                    self.object_position.pose.orientation.w = 1.0
+
+                    self.target_detected = True
         
         cv2.imshow('cropped image', crop_img)
         cv2.waitKey(1)
@@ -163,32 +174,42 @@ class RobotSLAM:
             # if self.stop_counter > 0:
             #     self.stop_counter -= 1
 
-            if self.m00 > self.m00_min:
-                # blob detected
-                if self.cy >= 560-100 and self.cy <= 560+100:
-                    if self.move_rate == 'slow':
-                        self.move_rate = 'stop'
-                        self.stop_counter = 30
-                else:
-                    self.move_rate = 'slow'
-            else:
-                self.move_rate = 'fast'
+            # if self.m00 > self.m00_min:
+            #     # blob detected
+            #     if self.cy >= 560-100 and self.cy <= 560+100:
+            #         if self.move_rate == 'slow':
+            #             self.move_rate = 'stop'
+            #             self.stop_counter = 30
+            #     else:
+            #         self.move_rate = 'slow'
+            # else:
+            #     self.move_rate = 'fast'
                 
-            if self.move_rate == 'fast':
-                print("MOVING FAST: I can't see anything at the moment, scanning the area...")
-                self.robot_controller.set_move_cmd(0.0, self.turn_vel_fast)
-            elif self.move_rate == 'slow':
-                print(f"MOVING SLOW: A blob of colour of size {self.m00:.0f} pixels is in view at y-position: {self.cy:.0f} pixels.")
-                self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
-            elif self.move_rate == 'stop' and self.stop_counter > 0:
-                print(f"STOPPED: The blob of colour is now dead-ahead at y-position {self.cy:.0f} pixels... Counting down: {self.stop_counter}")
-                self.robot_controller.set_move_cmd(0.0, 0.0)
-            else:
-                print(f"MOVING SLOW: A blob of colour of size {self.m00:.0f} pixels is in view at y-position: {self.cy:.0f} pixels.")
-                self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
+            # if self.move_rate == 'fast':
+            #     print("MOVING FAST: I can't see anything at the moment, scanning the area...")
+            #     self.robot_controller.set_move_cmd(0.0, self.turn_vel_fast)
+            # elif self.move_rate == 'slow':
+            #     print(f"MOVING SLOW: A blob of colour of size {self.m00:.0f} pixels is in view at y-position: {self.cy:.0f} pixels.")
+            #     self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
+            # elif self.move_rate == 'stop' and self.stop_counter > 0:
+            #     print(f"STOPPED: The blob of colour is now dead-ahead at y-position {self.cy:.0f} pixels... Counting down: {self.stop_counter}")
+            #     self.robot_controller.set_move_cmd(0.0, 0.0)
+            # else:
+            #     print(f"MOVING SLOW: A blob of colour of size {self.m00:.0f} pixels is in view at y-position: {self.cy:.0f} pixels.")
+            #     self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
             
-            self.robot_controller.publish()
-            self.rate.sleep()
+            if self.target_detected:
+                rospy.loginfo("Moving to the calculated global position...")
+                self.move_to_goal(self.object_position.pose.position.x,
+                                self.object_position.pose.position.y)
+                break 
+
+            if not self.target_detected:
+                print("SCANNING: Looking for the target color...")
+                self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
+                
+                self.robot_controller.publish()
+                self.rate.sleep()
     
 
 if __name__ == '__main__':
