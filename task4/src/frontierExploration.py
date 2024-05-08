@@ -11,10 +11,10 @@ import random
 
 import waffle
 
-
 from tf.transformations import quaternion_from_euler
 
 from tb3 import Tb3Move
+
 
 class FrontierExploration:
     def __init__(self):
@@ -36,7 +36,6 @@ class FrontierExploration:
 
     def map_callback(self, map_data):
         self.current_map = map_data
-        
 
     def identify_frontiers(self):
         # Identify frontiers in the map
@@ -55,15 +54,25 @@ class FrontierExploration:
 
                 if map_data[i] == 0:
                     # check for neighbouring cells
+                    wall_neighbour = False
                     for dx in [-1, 0, 1]:
                         for dy in [-1, 0, 1]:
                             ni = (y + dy) * width + (x + dx)
 
-                            if(0 <= ni < len(map_data) and map_data[ni] == -1):
-                                self.frontiers.add((x, y))
-                                break
+                            if (0 <= ni < len(map_data)):
+                                if map_data[ni] == -1:
+                                    wall_neighbour = True
+                                elif map_data[ni] == 100:
+                                    wall_neighbour = True
+                                    break
+
+                        if wall_neighbour:
+                            break
+
+                    if not wall_neighbour:
+                        self.frontiers.add((x, y))
         print(len(self.frontiers))
-    
+
     def get_closest_frontier(self):
         pos_x = self.odom.posx
         pos_y = self.odom.posy
@@ -74,7 +83,7 @@ class FrontierExploration:
 
         max_unexplored = 0
         best_frontier = None
-        
+
         for frontier in self.frontiers:
             unexplored_count = 0
 
@@ -86,7 +95,7 @@ class FrontierExploration:
 
                     if 0 <= i < len(map_data) and map_data[i] == -1:
                         unexplored_count += 1
-            
+
             if unexplored_count > max_unexplored:
                 max_unexplored = unexplored_count
                 best_frontier = frontier
@@ -97,7 +106,6 @@ class FrontierExploration:
     def get_random_frontier(self):
         self.closest_frontier = random.choice(list(self.frontiers))
         print(self.closest_frontier)
-
 
     def navigate_to_frontier(self, frontier):
         goal = PoseStamped()
@@ -115,13 +123,11 @@ class FrontierExploration:
         print("publishing goal")
         goal_publisher.publish(goal)
 
-        
-    
     def main(self):
         while self.current_map is None and not rospy.is_shutdown():
             rospy.loginfo("Waiting for map...")
             rospy.sleep(1)
-        
+
         while not rospy.is_shutdown():
             self.identify_frontiers()
             print(len(self.frontiers))
@@ -129,10 +135,7 @@ class FrontierExploration:
             self.navigate_to_frontier(self.closest_frontier)
             rospy.sleep(10)
 
-        
-
 
 if __name__ == "__main__":
     explorer = FrontierExploration()
     explorer.main()
-    
