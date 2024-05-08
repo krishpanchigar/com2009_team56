@@ -55,8 +55,8 @@ class FrontierExploration:
                 if map_data[i] == 0:
                     # check for neighbouring cells
                     wall_neighbour = False
-                    for dx in [-1, 0, 1]:
-                        for dy in [-1, 0, 1]:
+                    for dx in [-2, -1, 0, 1, 2]:
+                        for dy in [-2, -1, 0, 1, 2]:
                             ni = (y + dy) * width + (x + dx)
 
                             if (0 <= ni < len(map_data)):
@@ -133,7 +133,7 @@ class FrontierExploration:
             print(len(self.frontiers))
             self.get_closest_frontier()
             self.navigate_to_frontier(self.closest_frontier)
-            rospy.sleep(10)
+            rospy.sleep(30)
 
 
 if __name__ == "__main__":
