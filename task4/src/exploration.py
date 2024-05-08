@@ -35,7 +35,7 @@ class RobotSLAM:
 
         self.robot_controller = Tb3Move()
         self.turn_vel_fast = -0.5
-        self.turn_vel_slow = -0.1
+        self.turn_vel_slow = -0.3
         self.robot_controller.set_move_cmd(0.0, self.turn_vel_fast)
 
         self.move_rate = "" # fast, slow or stop
@@ -62,16 +62,16 @@ class RobotSLAM:
         # }
         rospy.loginfo("Target Colour: %s", self.target_colour)
 
-    def set_initial_pose(self, x, y, theta):
-        initial_pose = PoseWithCovarianceStamped()
-        initial_pose.header.frame_id = 'map'
-        initial_pose.header.stamp = rospy.Time.now()
-        initial_pose.pose.pose.position.x = x
-        initial_pose.pose.pose.position.y = y
-        initial_pose.pose.pose.orientation = Quaternion(*tf.transformations.quaternion_from_euler(0, 0, theta))
+    # def set_initial_pose(self, x, y, theta):
+    #     initial_pose = PoseWithCovarianceStamped()
+    #     initial_pose.header.frame_id = 'map'
+    #     initial_pose.header.stamp = rospy.Time.now()
+    #     initial_pose.pose.pose.position.x = x
+    #     initial_pose.pose.pose.position.y = y
+    #     initial_pose.pose.pose.orientation = Quaternion(*tf.transformations.quaternion_from_euler(0, 0, theta))
         
-        self.initial_pose_pub.publish(initial_pose)
-        rospy.sleep(1)
+    #     self.initial_pose_pub.publish(initial_pose)
+    #     rospy.sleep(1)
     
     def odometry_callback(self, msg):
         orientation_quaternion = msg.pose.pose.orientation
@@ -148,7 +148,7 @@ class RobotSLAM:
                     focal_length = 1206.8897719532354
                     real_object_width = 200
                     distance_mm = (focal_length * real_object_width) / w
-                    distance_m = distance_mm / 1000
+                    distance_m = distance_mm / 1000 + 0.1
                     rospy.loginfo(f"Estimated distance: {distance_m} m")
                     
                     object_x = distance_m * math.cos(self.robot_yaw)

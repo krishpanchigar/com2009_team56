@@ -55,7 +55,7 @@
   <!-- Python node -->
   <arg name="target_colour" default="green"/>
 
-  <node pkg="com2009_team56" type="exploration" name="exploration" output="screen">
+  <node pkg="com2009_team56" type="frontier_exploration" name="frontier_exploration" output="screen">
       <param name="target_colour" value="$(arg target_colour)"/>
   </node>
 

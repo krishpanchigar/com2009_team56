@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 import rospy
+import cv2
+from cv_bridge import CvBridge, CvBridgeError
+from sensor_msgs.msg import Image
 import tf
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
@@ -34,8 +37,82 @@ class FrontierExploration:
         self.frontiers = None
         self.closest_frontier = None
 
+        #initialize attributes for the camera and color detection
+        self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
+        self.cvbridge_interface = CvBridge()
+        self.target_colour = rospy.get_param('~target_colour', 'green')
+        self.m00 = 0
+        self.m00_min = 10000
+        self.object_position = PoseStamped()
+        rospy.loginfo("Target Colour: %s", self.target_colour)
+
     def map_callback(self, map_data):
         self.current_map = map_data
+
+    def camera_callback(self, img_data):
+        try:
+            cv_img = self.cvbridge_interface.imgmsg_to_cv2(img_data, desired_encoding="bgr8")
+        except CvBridgeError as e:
+            rospy.logerr(e)
+
+        height, width, _ = cv_img.shape
+        crop_width = width - 800
+        crop_height = 300
+        crop_x = int((width / 2) - (crop_width / 2))
+        crop_y = int((height / 2) - (crop_height / 2))
+        crop_img = cv_img[crop_y:crop_y + crop_height, crop_x:crop_x + crop_width]
+        hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
+
+        # Define HSV range for the target color
+        if self.target_colour == "green":
+            lower = (81, 175, 0)
+            upper = (92, 255, 255)
+        elif self.target_colour == "red":
+            lower = (0, 175, 0)
+            upper = (7, 255, 255)
+        elif self.target_colour == "yellow":
+            lower = (23, 175, 0)
+            upper = (28, 250, 255)
+        elif self.target_colour == "blue":
+            lower = (115, 224, 100)
+            upper = (130, 255, 255)
+
+        mask = cv2.inRange(hsv_img, lower, upper)
+        m = cv2.moments(mask)
+
+        self.m00 = m['m00']
+        self.cy = m['m10'] / (m['m00'] + 1e-5)
+
+        if self.m00 > self.m00_min:
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours:
+                largest_contour = max(contours, key=cv2.contourArea)
+                if cv2.contourArea(largest_contour) > 100:
+                    x, y, w, h = cv2.boundingRect(largest_contour)
+                    cv2.rectangle(crop_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                    focal_length = 1206.8897719532354
+                    real_object_width = 200
+                    distance_mm = (focal_length * real_object_width) / w
+                    distance_m = distance_mm / 1000 + 0.1
+                    rospy.loginfo(f"Estimated distance: {distance_m} m")
+                    
+                    # Assume the robot yaw and global position are known
+                    object_x = distance_m * math.cos(0.0)  # Replace with your robot's yaw
+                    object_y = distance_m * math.sin(0.0)
+
+                    # Store the detected object's global position
+                    self.object_position.header.frame_id = "map"
+                    self.object_position.header.stamp = rospy.Time.now()
+                    self.object_position.pose.position.x = object_x
+                    self.object_position.pose.position.y = object_y
+                    self.object_position.pose.orientation.w = 1.0
+
+                    self.target_detected = True
+
+        # Display the image
+        cv2.imshow('cropped image', crop_img)
+        cv2.waitKey(1)
+        
 
     def identify_frontiers(self):
         # Identify frontiers in the map
