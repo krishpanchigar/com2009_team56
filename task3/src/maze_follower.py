@@ -26,7 +26,7 @@ class MazeFollower(object):
         self.right_wall_desired_dist = 0.4
         self.error = 0.05
         self.intended_direction = self.odom.yaw * self.odom.yaw_direction
-        self.pid_controller = waffle.PIDController(P=0.2, I - 0.0, D=0.1)
+        self.pid_controller = waffle.PIDController(P=0.2, I = 0.0, D=0.1)
 
     def stop(self):
         self.motion.set_velocity(self.fwd_vel, 0.0)
