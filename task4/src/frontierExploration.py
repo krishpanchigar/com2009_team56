@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-# TODO: terminate program when image is clicked?
-# TODO: improve SLAM stuff, send the next goal if it is finished, or stationary for 
-# TODO: 
+# TODO: terminate program when image is clicked - undo if Tom says no
+# TODO: improve SLAM stuff, send the next goal if it is finished, or stationary for like 10 seconds, or goal is finished
+# TODO: make sure entire width of beacon in in the image
 
 import rospy
 import cv2
@@ -103,12 +103,13 @@ class FrontierExploration:
                     beacon_width_pixels = (distance_mm + w) / focal_length
                     print(f"Beacon width: {beacon_width_pixels}")
                     print(f"W: {w}")
+                    if w >= 200:
+                        self.motion.stop()
+                        image_path = os.path.join(os.path.expanduser('~'), 'catkin_ws/src/com2009_team56/snaps/task4_beacon.jpg')
+                        cv2.imwrite(image_path, crop_img)
+                        print("Image saved!!")
+                        # rospy.signal_shutdown("Image has been captured. Terminating the program...")
                     
-                    self.motion.stop()
-                    image_path = os.path.join(os.path.expanduser('~'), 'catkin_ws/src/com2009_team56/snaps/task4_beacon.jpg')
-                    cv2.imwrite(image_path, crop_img)
-                    print(image_path)
-                    print("Image saved!!")
                     rospy.loginfo(f"Estimated distance: {distance_m} m")
                     
                     # Assume the robot yaw and global position are known

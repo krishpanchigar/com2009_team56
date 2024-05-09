@@ -59,5 +59,8 @@
       <param name="target_colour" value="$(arg target_colour)"/>
   </node>
 
+  <!-- Map Saver Node -->
+  <node name="map_saver_node" pkg="com2009_team56" type="map_saver.py" output="screen"/>
+
 
 </launch>
