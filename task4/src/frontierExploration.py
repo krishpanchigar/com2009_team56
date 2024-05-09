@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-# TODO: make the robot stop and click a picture when looking at the target, make sure the whole target is in there
+# TODO: terminate program when image is clicked?
 # TODO: improve SLAM stuff, send the next goal if it is finished, or stationary for 
+# TODO: 
 
 import rospy
 import cv2
@@ -14,6 +15,7 @@ from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, Point
 from nav_msgs.msg import OccupancyGrid
 import math
 import random
+import os
 
 import waffle
 
@@ -39,6 +41,7 @@ class FrontierExploration:
         self.current_map = None
         self.frontiers = None
         self.closest_frontier = None
+        self.motion = waffle.Motion()
 
         #initialize attributes for the camera and color detection
         self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
@@ -97,6 +100,15 @@ class FrontierExploration:
                     real_object_width = 200
                     distance_mm = (focal_length * real_object_width) / w
                     distance_m = distance_mm / 1000 + 0.1
+                    beacon_width_pixels = (distance_mm + w) / focal_length
+                    print(f"Beacon width: {beacon_width_pixels}")
+                    print(f"W: {w}")
+                    
+                    self.motion.stop()
+                    image_path = os.path.join(os.path.expanduser('~'), 'catkin_ws/src/com2009_team56/snaps/task4_beacon.jpg')
+                    cv2.imwrite(image_path, crop_img)
+                    print(image_path)
+                    print("Image saved!!")
                     rospy.loginfo(f"Estimated distance: {distance_m} m")
                     
                     # Assume the robot yaw and global position are known
