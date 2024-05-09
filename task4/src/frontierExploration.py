@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# TODO: make the robot stop and click a picture when looking at the target, make sure the whole target is in there
+# TODO: improve SLAM stuff, send the next goal if it is finished, or stationary for 
+
 import rospy
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
