@@ -26,7 +26,7 @@ class MazeFollower(object):
         self.right_wall_desired_dist = 0.4
         self.error = 0.05
         self.intended_direction = self.odom.yaw * self.odom.yaw_direction
-        self.pid_controller = waffle.PIDController(P=0.2, I = 0.0, D=0.1)
+        self.pid_controller = waffle.PIDController(P=0.75, I=0.1866, D=2.1094)
 
     def stop(self):
         self.motion.set_velocity(self.fwd_vel, 0.0)
@@ -60,7 +60,7 @@ class MazeFollower(object):
         front_dist = min(self.lidar.subsets.frontArray)
         while front_dist > 0.4:
             print("Going forward")
-            self.correction()
+            self.pid_correction()
             front_dist = min(self.lidar.subsets.frontArray)
         self.stop()
         time.sleep(1)
@@ -71,10 +71,17 @@ class MazeFollower(object):
         while abs((self.odom.yaw * self.odom.yaw_direction) - self.intended_direction) > 0.5:
             self.motion.set_velocity(0.0, (sign * self.ang_vel))
             self.motion.publish_velocity()
+    
+    def approximate_angle(self):
+        min_dist, max_dist, avg = self.lidar.get_min_max_avg(self.lidar.subsets.frontArray)
+        print(f"Min: {min_dist}, Max: {max_dist}, Avg: {avg}")
+        print(f"Difference: {max_dist - min_dist}")
 
     def turn_90(self, direction):
+        # TODO Detect whether a turn is roughly greater or less than 45 degrees
         # TODO Fix turning logic!!
         self.face_wall()
+        self.approximate_angle()
         current_yaw = self.odom.yaw
         rounded_yaw = round(current_yaw / 90) * 90
         print(f"Current yaw: {current_yaw}")
@@ -91,7 +98,6 @@ class MazeFollower(object):
         print(f"Target yaw: {target_yaw}")
 
         while abs((self.odom.yaw * self.odom.yaw_direction) - target_yaw) > 0.5:
-            print(self.odom.yaw, self.odom.yaw_direction)
             self.motion.set_velocity(0.0, ang_vel)
             self.motion.publish_velocity()
 
@@ -101,12 +107,19 @@ class MazeFollower(object):
     def pid_correction(self):
         left_wall = min(self.lidar.subsets.l3Array)
         right_wall = min(self.lidar.subsets.r3Array)
+        
+        if left_wall > 0.4:
+            left_wall = 0.3
+        if right_wall > 0.4:
+            right_wall = 0.3
+        
         average_dist = (left_wall + right_wall) / 2
 
         self.pid_controller.SetPoint = average_dist
         self.pid_controller.update(right_wall)
 
         correction = self.pid_controller.output
+        print(f"Correction: {correction}")
         self.motion.set_velocity(self.fwd_vel, correction)
         self.motion.publish_velocity()
 

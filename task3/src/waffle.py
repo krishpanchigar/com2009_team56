@@ -6,6 +6,7 @@ Like the tb3.py module, but more advanced!
 Tom Howard, March 2024
 """
 
+import time
 import rospy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
@@ -196,6 +197,12 @@ class Lidar():
                       "---"
                 self.timestamp = rospy.get_time()
                 print(msg)
+                
+    def get_min_max_avg(self, subset):
+        min_val = min(subset)
+        max_val = max(subset)
+        avg = sum(subset) / len(subset)
+        return min_val, max_val, avg
 
     def filter(self, lidar_subset):
         valid_data = lidar_subset[(lidar_subset > 0.1) & (lidar_subset != float("inf"))]
