@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 # TODO: terminate program when image is clicked - undo if Tom says no
-# TODO: improve SLAM stuff, send the next goal if it is finished, or stationary for like 10 seconds, or goal is finished
+# TODO: improve SLAM stuff, send the next goal if it is finished, maybe do what Ben did to localise the map data
+# TODO: send random frontier if stationary for 10 seconds 
 # TODO: make sure entire width of beacon in in the image
 
 import rospy
