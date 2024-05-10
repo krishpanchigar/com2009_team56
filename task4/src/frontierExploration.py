@@ -54,7 +54,34 @@ class FrontierExploration:
         rospy.loginfo("Target Colour: %s", self.target_colour)
 
     def map_callback(self, map_data):
-        self.current_map = map_data
+        # Check if a new map has been initialized
+        if self.current_map is None:
+            # Create a new map filled with -1
+            self.current_map = OccupancyGrid()
+            self.current_map.info = map_data.info
+            self.current_map.data = [-1 for _ in range(len(map_data.data))]
+
+        # Get the robot's position in map coordinates
+        robot_x = int((self.odom.posx - map_data.info.origin.position.x) / map_data.info.resolution)
+        robot_y = int((self.odom.posy - map_data.info.origin.position.y) / map_data.info.resolution)
+
+        # Define the radius of the explored area in map coordinates
+        radius = 20  # Adjust this value as needed
+
+        # Copy cells within the radius from the original map to the new map
+        for dx in range(-radius, radius + 1):
+            for dy in range(-radius, radius + 1):
+                if dx * dx + dy * dy <= radius * radius:  # If the cell is within the radius
+                    x = robot_x + dx
+                    y = robot_y + dy
+                    if 0 <= x < map_data.info.width and 0 <= y < map_data.info.height:  # If the cell is within the map
+                        index = y * map_data.info.width + x
+                        self.current_map.data[index] = map_data.data[index]
+
+        # Copy known obstacles from the original map to the new map
+        for i, cell in enumerate(map_data.data):
+            if cell == 100:  # If the cell is an obstacle
+                self.current_map.data[i] = cell
 
     def camera_callback(self, img_data):
         try:
