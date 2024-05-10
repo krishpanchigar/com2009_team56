@@ -44,6 +44,8 @@ class FrontierExploration:
         self.closest_frontier = None
         self.motion = waffle.Motion()
 
+        self.goal = None
+
         #initialize attributes for the camera and color detection
         self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
         self.cvbridge_interface = CvBridge()
@@ -136,7 +138,7 @@ class FrontierExploration:
                     snaps_dir = os.path.join(os.path.expanduser('~'), 'catkin_ws/src/com2009_team56/snaps')
                     if not os.path.exists(snaps_dir):
                         os.makedirs(snaps_dir)
-                    filepath = os.path.join(snaps_dir,"task4_bacon.jpg")
+                    filepath = os.path.join(snaps_dir,"task4_beacon.jpg")
                     cv2.imwrite(filepath, crop_img)
                     print("Image saved!!")                
                     rospy.loginfo(f"Estimated distance: {distance_m} m")
@@ -237,7 +239,8 @@ class FrontierExploration:
         origin = self.current_map.info.origin.position
         print(f"Resolution: {resolution}")
         print(f"origin: {origin}")
-        goal.pose.position = Point(frontier[0] * resolution + origin.x, frontier[1] * resolution + origin.y, 0)
+        self.goal = Point(frontier[0] * resolution + origin.x, frontier[1] * resolution + origin.y, 0)
+        goal.pose.position = self.goal
         goal.pose.orientation.w = 1.0
 
         goal_publisher = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=1)
@@ -249,13 +252,36 @@ class FrontierExploration:
         while self.current_map is None and not rospy.is_shutdown():
             rospy.loginfo("Waiting for map...")
             rospy.sleep(1)
+        
+        last_position = None
+        last_time = rospy.Time.now()
+
+        self.identify_frontiers()
+        print(len(self.frontiers))
+        self.get_closest_frontier()
+        self.navigate_to_frontier(self.closest_frontier)
 
         while not rospy.is_shutdown():
-            self.identify_frontiers()
-            print(len(self.frontiers))
-            self.get_closest_frontier()
-            self.navigate_to_frontier(self.closest_frontier)
-            rospy.sleep(30)
+            # Preempt if robot is at goal
+            if self.odom.posx == self.goal[0] and self.odom.posy == self.goal[1]:
+                print("Preempting goal")
+                self.client.cancel_all_goals()
+                self.identify_frontiers()
+                self.get_closest_frontier()
+                self.navigate_to_frontier(self.closest_frontier)
+
+            current_time = rospy.Time.now()
+            if last_position == (self.odom.posx, self.odom.posy) and (current_time - last_time).to_sec > 5:
+                print("Preempting goal")
+                self.client.cancel_all_goals()
+                self.identify_frontiers()
+                self.get_random_frontier()
+                self.navigate_to_frontier(self.closest_frontier)
+
+            last_position = (self.odom.posx, self.odom.posy)
+            last_time = current_time
+
+            rospy.sleep(1)
 
 
 if __name__ == "__main__":
