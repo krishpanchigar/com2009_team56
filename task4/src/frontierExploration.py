@@ -106,9 +106,18 @@ class FrontierExploration:
                     print(f"W: {w}")
                     if w >= 200:
                         self.motion.stop()
-                        image_path = os.path.join(os.path.expanduser('~'), 'catkin_ws/src/com2009_team56/snaps/task4_beacon.jpg')
-                        cv2.imwrite(image_path, crop_img)
+                        snaps_dir = f"com2009_team56/snaps"
+                        if not os.path.exists(snaps_dir):
+                            os.makedirs(snaps_dir)
+                        filepath = os.path.join(snaps_dir,"task4_bacon.jpg")
+                        cv2.imwrite(filepath, crop_img)
                         print("Image saved!!")
+                        self.camera_subscriber.unregister()
+                        rospy.loginfo("Resuming frontier exploration...")
+                        self.identify_frontiers()
+                        print(len(self.frontiers))
+                        self.get_closest_frontier()
+                        self.navigate_to_frontier(self.closest_frontier)
                         # rospy.signal_shutdown("Image has been captured. Terminating the program...")
                     
                     rospy.loginfo(f"Estimated distance: {distance_m} m")
