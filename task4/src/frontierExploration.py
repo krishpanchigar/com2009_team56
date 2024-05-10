@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-# TODO: terminate program when image is clicked - undo if Tom says no
 # TODO: improve SLAM stuff, send the next goal if it is finished, maybe do what Ben did to localise the map data
 # TODO: send random frontier if stationary for 10 seconds 
 # TODO: make sure entire width of beacon in in the image
+# TODO: make the explored area on the map smaller so that it explores the whole arena
 
 import rospy
 import cv2
@@ -45,7 +45,7 @@ class FrontierExploration:
         self.motion = waffle.Motion()
 
         #initialize attributes for the camera and color detection
-        self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
+        self.camera_subscriber = rospy.Subscriber("/camera/color/image_raw", Image, self.camera_callback)
         self.cvbridge_interface = CvBridge()
         self.target_colour = rospy.get_param('~target_colour', 'green')
         self.m00 = 0
@@ -63,7 +63,7 @@ class FrontierExploration:
             rospy.logerr(e)
 
         height, width, _ = cv_img.shape
-        crop_width = width - 800
+        crop_width = width
         crop_height = 300
         crop_x = int((width / 2) - (crop_width / 2))
         crop_y = int((height / 2) - (crop_height / 2))
@@ -104,22 +104,21 @@ class FrontierExploration:
                     beacon_width_pixels = (distance_mm + w) / focal_length
                     print(f"Beacon width: {beacon_width_pixels}")
                     print(f"W: {w}")
-                    if w >= 200:
-                        self.motion.stop()
-                        snaps_dir = f"com2009_team56/snaps"
-                        if not os.path.exists(snaps_dir):
-                            os.makedirs(snaps_dir)
-                        filepath = os.path.join(snaps_dir,"task4_bacon.jpg")
-                        cv2.imwrite(filepath, crop_img)
-                        print("Image saved!!")
-                        self.camera_subscriber.unregister()
-                        rospy.loginfo("Resuming frontier exploration...")
-                        self.identify_frontiers()
-                        print(len(self.frontiers))
-                        self.get_closest_frontier()
-                        self.navigate_to_frontier(self.closest_frontier)
-                        # rospy.signal_shutdown("Image has been captured. Terminating the program...")
                     
+                    self.motion.stop()
+                    snaps_dir = os.path.join(os.path.expanduser('~'), 'catkin_ws/src/com2009_team56/snaps')
+                    if not os.path.exists(snaps_dir):
+                        os.makedirs(snaps_dir)
+                    filepath = os.path.join(snaps_dir,"task4_bacon.jpg")
+                    cv2.imwrite(filepath, crop_img)
+                    print("Image saved!!")
+                    rospy.loginfo("Resuming frontier exploration...")
+                    self.identify_frontiers()
+                    print(len(self.frontiers))
+                    self.get_closest_frontier()
+                    self.navigate_to_frontier(self.closest_frontier)
+                    # rospy.signal_shutdown("Image has been captured. Terminating the program...")
+                
                     rospy.loginfo(f"Estimated distance: {distance_m} m")
                     
                     # Assume the robot yaw and global position are known
