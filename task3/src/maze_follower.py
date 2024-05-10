@@ -26,7 +26,7 @@ class MazeFollower(object):
         self.right_wall_desired_dist = 0.4
         self.error = 0.05
         self.intended_direction = self.odom.yaw * self.odom.yaw_direction
-        self.pid_controller = waffle.PIDController(P=0.75, I=0.1866, D=2.1094)
+        self.pid_controller = waffle.PIDController(P=0.75, I=0, D=2.1094)
 
     def stop(self):
         self.motion.set_velocity(self.fwd_vel, 0.0)
@@ -68,8 +68,8 @@ class MazeFollower(object):
 
     def face_wall(self):
         sign = np.sign((self.odom.yaw * self.odom.yaw_direction) - self.intended_direction)
-        while abs((self.odom.yaw * self.odom.yaw_direction) - self.intended_direction) > 0.5:
-            self.motion.set_velocity(0.0, (sign * self.ang_vel))
+        while abs((self.odom.yaw * self.odom.yaw_direction) - self.intended_direction) >= 0.5:
+            self.motion.set_velocity(0.0, (-1 * sign * self.ang_vel))
             self.motion.publish_velocity()
     
     def approximate_angle(self):
@@ -96,6 +96,8 @@ class MazeFollower(object):
             ang_vel = self.ang_vel
 
         print(f"Target yaw: {target_yaw}")
+        if target_yaw == 180:
+            target_yaw = -180
 
         while abs((self.odom.yaw * self.odom.yaw_direction) - target_yaw) > 0.5:
             self.motion.set_velocity(0.0, ang_vel)
@@ -103,6 +105,7 @@ class MazeFollower(object):
 
         self.stop()
         self.intended_direction = target_yaw
+        self.face_wall()
 
     def pid_correction(self):
         left_wall = min(self.lidar.subsets.l3Array)
