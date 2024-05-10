@@ -252,29 +252,27 @@ class FrontierExploration:
         while self.current_map is None and not rospy.is_shutdown():
             rospy.loginfo("Waiting for map...")
             rospy.sleep(1)
-        
+
         last_position = None
         last_time = rospy.Time.now()
 
-        self.identify_frontiers()
-        print(len(self.frontiers))
-        self.get_closest_frontier()
-        self.navigate_to_frontier(self.closest_frontier)
-
         while not rospy.is_shutdown():
-            # Preempt if robot is at goal
-            if self.odom.posx == self.goal[0] and self.odom.posy == self.goal[1]:
-                print("Preempting goal: goal reached")
+            self.identify_frontiers()
+            print(len(self.frontiers))
+            self.get_closest_frontier()
+
+            # Preempt condition 1: If robot's x and y are the same as the goal's x and y
+            if self.odom.posx == self.closest_frontier[0] and self.odom.posy == self.closest_frontier[1]:
+                rospy.loginfo("Preempting goal due to reaching the destination.")
                 self.client.cancel_all_goals()
-                self.identify_frontiers()
-                self.get_closest_frontier()
+                self.get_random_frontier()
                 self.navigate_to_frontier(self.closest_frontier)
 
+            # Preempt condition 2: If robot is stationary for 5 seconds
             current_time = rospy.Time.now()
-            if last_position == (self.odom.posx, self.odom.posy) and (current_time - last_time).to_sec > 5:
-                print("Preempting goal: Stationary")
+            if last_position == (self.odom.posx, self.odom.posy) and (current_time - last_time).to_sec() > 5:
+                rospy.loginfo("Preempting goal due to robot being stationary for 5 seconds.")
                 self.client.cancel_all_goals()
-                self.identify_frontiers()
                 self.get_random_frontier()
                 self.navigate_to_frontier(self.closest_frontier)
 
