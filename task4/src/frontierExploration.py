@@ -239,8 +239,8 @@ class FrontierExploration:
         origin = self.current_map.info.origin.position
         print(f"Resolution: {resolution}")
         print(f"origin: {origin}")
-        self.goal = Point(frontier[0] * resolution + origin.x, frontier[1] * resolution + origin.y, 0)
-        goal.pose.position = self.goal
+        self.goal = (frontier[0] * resolution + origin.x, frontier[1] * resolution + origin.y)
+        goal.pose.position = Point(frontier[0] * resolution + origin.x, frontier[1] * resolution + origin.y, 0)
         goal.pose.orientation.w = 1.0
 
         goal_publisher = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=1)
@@ -264,7 +264,7 @@ class FrontierExploration:
         while not rospy.is_shutdown():
             # Preempt if robot is at goal
             if self.odom.posx == self.goal[0] and self.odom.posy == self.goal[1]:
-                print("Preempting goal")
+                print("Preempting goal: goal reached")
                 self.client.cancel_all_goals()
                 self.identify_frontiers()
                 self.get_closest_frontier()
@@ -272,7 +272,7 @@ class FrontierExploration:
 
             current_time = rospy.Time.now()
             if last_position == (self.odom.posx, self.odom.posy) and (current_time - last_time).to_sec > 5:
-                print("Preempting goal")
+                print("Preempting goal: Stationary")
                 self.client.cancel_all_goals()
                 self.identify_frontiers()
                 self.get_random_frontier()
