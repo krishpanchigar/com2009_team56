@@ -45,7 +45,7 @@ class FrontierExploration:
         self.motion = waffle.Motion()
 
         #initialize attributes for the camera and color detection
-        self.camera_subscriber = rospy.Subscriber("/camera/color/image_raw", Image, self.camera_callback)
+        self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
         self.cvbridge_interface = CvBridge()
         self.target_colour = rospy.get_param('~target_colour', 'green')
         self.m00 = 0
@@ -138,14 +138,7 @@ class FrontierExploration:
                         os.makedirs(snaps_dir)
                     filepath = os.path.join(snaps_dir,"task4_bacon.jpg")
                     cv2.imwrite(filepath, crop_img)
-                    print("Image saved!!")
-                    rospy.loginfo("Resuming frontier exploration...")
-                    self.identify_frontiers()
-                    print(len(self.frontiers))
-                    self.get_closest_frontier()
-                    self.navigate_to_frontier(self.closest_frontier)
-                    # rospy.signal_shutdown("Image has been captured. Terminating the program...")
-                
+                    print("Image saved!!")                
                     rospy.loginfo(f"Estimated distance: {distance_m} m")
                     
                     # Assume the robot yaw and global position are known
