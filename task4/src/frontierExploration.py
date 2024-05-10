@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
-# TODO: improve SLAM stuff, send the next goal if it is finished, maybe do what Ben did to localise the map data
-# TODO: send random frontier if stationary for 10 seconds 
 # TODO: make sure entire width of beacon in in the image
-# TODO: make the explored area on the map smaller so that it explores the whole arena
+# TODO: add node to launch file
 
 import rospy
 import cv2
@@ -143,8 +141,6 @@ class FrontierExploration:
                         os.makedirs(snaps_dir)
                     filepath = os.path.join(snaps_dir, "task4_beacon.jpg")
                     cv2.imwrite(filepath, crop_img)
-                    print("Image saved!!")
-                    rospy.loginfo(f"Estimated distance: {distance_m} m")
 
                     # Assume the robot yaw and global position are known
                     object_x = distance_m * math.cos(0.0)  # Replace with your robot's yaw
@@ -284,6 +280,7 @@ class FrontierExploration:
             self.get_closest_frontier()
             self.navigate_to_frontier(self.closest_frontier)
 
+            # TODO: add an actual 10 second timer here instead of for loop
             for _ in range(20):
                 if self.check_preempt_conditions():
                     self.last_position = (self.odom.posx, self.odom.posy)
