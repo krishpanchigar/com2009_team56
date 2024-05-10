@@ -248,7 +248,7 @@ class FrontierExploration:
 
     def check_preempt_conditions(self):
         # Preempt condition 1: If robot's x and y are the same as the goal's x and y
-        if self.odom.posx == self.closest_frontier[0] and self.odom.posy == self.closest_frontier[1]:
+        if self.odom.posx == self.goal[0] and self.odom.posy == self.goal[1]:
             rospy.loginfo("Preempting goal due to reaching the destination.")
             self.client.cancel_all_goals()
             self.get_random_frontier()
