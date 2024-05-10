@@ -27,6 +27,7 @@ from tb3 import Tb3Move
 
 class FrontierExploration:
     def __init__(self):
+
         rospy.init_node('frontier_exploration', anonymous=False)
 
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
@@ -45,6 +46,8 @@ class FrontierExploration:
         self.motion = waffle.Motion()
 
         self.goal = None
+        self.last_position = None
+        self.last_time = None
 
         #initialize attributes for the camera and color detection
         self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
@@ -133,16 +136,16 @@ class FrontierExploration:
                     beacon_width_pixels = (distance_mm + w) / focal_length
                     print(f"Beacon width: {beacon_width_pixels}")
                     print(f"W: {w}")
-                    
+
                     self.motion.stop()
                     snaps_dir = os.path.join(os.path.expanduser('~'), 'catkin_ws/src/com2009_team56/snaps')
                     if not os.path.exists(snaps_dir):
                         os.makedirs(snaps_dir)
-                    filepath = os.path.join(snaps_dir,"task4_beacon.jpg")
+                    filepath = os.path.join(snaps_dir, "task4_beacon.jpg")
                     cv2.imwrite(filepath, crop_img)
-                    print("Image saved!!")                
+                    print("Image saved!!")
                     rospy.loginfo(f"Estimated distance: {distance_m} m")
-                    
+
                     # Assume the robot yaw and global position are known
                     object_x = distance_m * math.cos(0.0)  # Replace with your robot's yaw
                     object_y = distance_m * math.sin(0.0)
@@ -159,7 +162,6 @@ class FrontierExploration:
         # Display the image
         cv2.imshow('cropped image', crop_img)
         cv2.waitKey(1)
-        
 
     def identify_frontiers(self):
         # Identify frontiers in the map
@@ -248,38 +250,44 @@ class FrontierExploration:
         print("publishing goal")
         goal_publisher.publish(goal)
 
+    def check_preempt_conditions(self):
+        # Preempt condition 1: If robot's x and y are the same as the goal's x and y
+        if self.odom.posx == self.closest_frontier[0] and self.odom.posy == self.closest_frontier[1]:
+            rospy.loginfo("Preempting goal due to reaching the destination.")
+            self.client.cancel_all_goals()
+            self.get_random_frontier()
+            self.navigate_to_frontier(self.closest_frontier)
+            return True
+
+        # Preempt condition 2: If robot is stationary for 5 seconds
+        current_time = rospy.Time.now()
+        if self.last_position == (self.odom.posx, self.odom.posy) and (current_time - self.last_time).to_sec() > 5:
+            rospy.loginfo("Preempting goal due to robot being stationary for 5 seconds.")
+            self.client.cancel_all_goals()
+            self.get_random_frontier()
+            self.navigate_to_frontier(self.closest_frontier)
+            return True
+
+        return False
+
     def main(self):
         while self.current_map is None and not rospy.is_shutdown():
             rospy.loginfo("Waiting for map...")
             rospy.sleep(1)
 
-        last_position = None
-        last_time = rospy.Time.now()
+        self.last_position = None
+        self.last_time = rospy.Time.now()
 
         while not rospy.is_shutdown():
             self.identify_frontiers()
             print(len(self.frontiers))
             self.get_closest_frontier()
+            self.navigate_to_frontier(self.closest_frontier)
 
-            # Preempt condition 1: If robot's x and y are the same as the goal's x and y
-            if self.odom.posx == self.closest_frontier[0] and self.odom.posy == self.closest_frontier[1]:
-                rospy.loginfo("Preempting goal due to reaching the destination.")
-                self.client.cancel_all_goals()
-                self.get_random_frontier()
-                self.navigate_to_frontier(self.closest_frontier)
-
-            # Preempt condition 2: If robot is stationary for 5 seconds
-            current_time = rospy.Time.now()
-            if last_position == (self.odom.posx, self.odom.posy) and (current_time - last_time).to_sec() > 5:
-                rospy.loginfo("Preempting goal due to robot being stationary for 5 seconds.")
-                self.client.cancel_all_goals()
-                self.get_random_frontier()
-                self.navigate_to_frontier(self.closest_frontier)
-
-            last_position = (self.odom.posx, self.odom.posy)
-            last_time = current_time
-
-            rospy.sleep(1)
+            for _ in range(20):
+                if self.check_preempt_conditions():
+                    self.last_position = (self.odom.posx, self.odom.posy)
+                    self.last_time = rospy.Time.now()
 
 
 if __name__ == "__main__":
