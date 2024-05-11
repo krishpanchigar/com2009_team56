@@ -142,6 +142,9 @@ class FrontierExploration:
                     filepath = os.path.join(snaps_dir, "task4_beacon.jpg")
                     cv2.imwrite(filepath, crop_img)
 
+                    if h/w >= 1.24 and h/w <= 1.26:
+                        self.camera_subscriber.unregister()
+
                     # Assume the robot yaw and global position are known
                     object_x = distance_m * math.cos(0.0)  # Replace with your robot's yaw
                     object_y = distance_m * math.sin(0.0)
