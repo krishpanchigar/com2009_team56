@@ -14,9 +14,9 @@ class WallFollowerPID:
         self.lidar = waffle.Lidar(debug=True)
         self.odom = waffle.Pose(debug=True)
         
-        self.P = 5.5 #6
-        self.I = 0
-        self.D = 10
+        self.P = 2.0
+        self.I = 0.0
+        self.D = 0.0
         
         self.desired_distance = 0.3
         self.prev_error = 0.0
@@ -30,10 +30,24 @@ class WallFollowerPID:
         self.motion.stop()
         time.sleep(1)
 
+    def calculate_forward_velocity(self):
+        front_distance = min(self.lidar.subsets.frontArray)
+        right_distance = min(self.lidar.subsets.r3Array)
+
+        if front_distance < 0.5 or right_distance < 0.25:
+            return 0.1
+        else:
+            return 0.2
+
+
     def pid_control(self, current_distance):
         error = self.desired_distance - current_distance
         
         self.integral += error
+
+        max_integral = 1.0
+        min_integral = -1.0
+        self.integral = max(min(self.integral, max_integral), min_integral)
         
         derivative = error - self.prev_error
         
@@ -48,22 +62,33 @@ class WallFollowerPID:
             right_distances = self.lidar.subsets.r3Array
             right_distance = min(right_distances)
 
+            left_distance = min(self.lidar.subsets.l3Array)
+
             front_distances = self.lidar.subsets.frontArray
             front_distance = min(front_distances)
+
+            self.fwd_vel = self.calculate_forward_velocity()
             
             if front_distance < 0.3:
-                self.motion.set_velocity(0.0, 0.5) 
-                self.motion.publish_velocity()
-                rospy.loginfo("Turning left due to front wall")
+                if left_distance > right_distance:
+                    self.motion.set_velocity(0, 0.5)
+                    self.motion.publish_velocity()
+                    rospy.loginfo("Turning left due to front wall")
+                else:
+                    self.motion.set_velocity(0, -0.5)
+                    self.motion.publish_velocity()
+                    rospy.loginfo("Turning right due to fornt wall")
                 time.sleep(1.5) 
                 self.stop()
             else:
+                if right_distance > 0.6 and left_distance < 0.5:
+                    right_distance = left_distance
                 correction = self.pid_control(right_distance)
                 
                 self.motion.set_velocity(self.fwd_vel, correction)
                 self.motion.publish_velocity()
             
-            rospy.loginfo(f"Right distance: {right_distance}, Correction: {correction}")
+            rospy.loginfo(f"Fwd Vel: {self.fwd_vel} Right distance: {right_distance}, Correction: {correction}")
             
             self.rate.sleep()
 
