@@ -135,7 +135,6 @@ class FrontierExploration:
                     print(f"Beacon width: {beacon_width_pixels}")
                     print(f"W: {w}")
 
-                    self.motion.stop()
                     snaps_dir = os.path.join(os.path.expanduser('~'), 'catkin_ws/src/com2009_team56/snaps')
                     if not os.path.exists(snaps_dir):
                         os.makedirs(snaps_dir)

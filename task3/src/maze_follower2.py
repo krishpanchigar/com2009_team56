@@ -57,7 +57,7 @@ class WallFollowerPID:
                 rospy.loginfo("Turning left due to front wall")
                 time.sleep(1.5) 
                 self.stop()
-            else:
+            elif right_distance:
                 correction = self.pid_control(right_distance)
                 
                 self.motion.set_velocity(self.fwd_vel, correction)
