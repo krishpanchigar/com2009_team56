@@ -290,7 +290,7 @@ class FrontierExploration:
             rospy.loginfo("Waiting for map...")
             rospy.sleep(1)
 
-        self.last_position = None
+        self.last_position = (self.odom.posx, self.odom.posy)
         self.last_time = rospy.Time.now()
 
         while not rospy.is_shutdown():
@@ -305,11 +305,14 @@ class FrontierExploration:
                 if self.check_preempt_conditions():
                     self.last_position = (self.odom.posx, self.odom.posy)
                     self.last_time = rospy.Time.now()
-                
+
                 elapsed_time = current_time - start_time
                 if elapsed_time.to_sec() >= 20:
                     break
             rospy.sleep(0.1)
+            # Update last_position and last_time at the end of each loop
+            self.last_position = (self.odom.posx, self.odom.posy)
+            self.last_time = rospy.Time.now()
 
 
             
