@@ -48,7 +48,8 @@ class FrontierExploration:
         self.last_time = None
 
         #initialize attributes for the camera and color detection
-        self.camera_subscriber = rospy.Subscriber("/camera/color/image_raw", Image, self.camera_callback)
+        # TODO: change camera topic for submit
+        self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
         self.cvbridge_interface = CvBridge()
         self.target_colour = rospy.get_param('~target_colour', 'green')
         self.m00 = 0
@@ -227,7 +228,6 @@ class FrontierExploration:
                 best_frontier = frontier
 
         self.closest_frontier = best_frontier
-        print(self.closest_frontier)
 
     def get_random_frontier(self):
         self.closest_frontier = random.choice(list(self.frontiers))
@@ -239,8 +239,6 @@ class FrontierExploration:
         goal.header.stamp = rospy.Time.now()
         resolution = self.current_map.info.resolution
         origin = self.current_map.info.origin.position
-        print(f"Resolution: {resolution}")
-        print(f"origin: {origin}")
         self.goal = (frontier[0] * resolution + origin.x, frontier[1] * resolution + origin.y)
         goal.pose.position = Point(frontier[0] * resolution + origin.x, frontier[1] * resolution + origin.y, 0)
         goal.pose.orientation.w = 1.0
@@ -250,25 +248,25 @@ class FrontierExploration:
         print("publishing goal")
         goal_publisher.publish(goal)
 
-    # def check_preempt_conditions(self):
-    #     # Preempt condition 1: If robot's x and y are the same as the goal's x and y
-    #     if self.odom.posx == self.goal[0] and self.odom.posy == self.goal[1]:
-    #         rospy.loginfo("Preempting goal due to reaching the destination.")
-    #         self.client.cancel_all_goals()
-    #         self.get_random_frontier()
-    #         self.navigate_to_frontier(self.closest_frontier)
-    #         return True
+    def check_preempt_conditions(self):
+        # Preempt condition 1: If robot's x and y are the same as the goal's x and y
+        if self.odom.posx == self.goal[0] and self.odom.posy == self.goal[1]:
+            rospy.loginfo("Preempting goal due to reaching the destination.")
+            self.client.cancel_all_goals()
+            self.get_random_frontier()
+            self.navigate_to_frontier(self.closest_frontier)
+            return True
 
-    #     # Preempt condition 2: If robot is stationary for 5 seconds
-    #     current_time = rospy.Time.now()
-    #     if self.last_position == (self.odom.posx, self.odom.posy) and (current_time - self.last_time).to_sec() > 5:
-    #         rospy.loginfo("Preempting goal due to robot being stationary for 5 seconds.")
-    #         self.client.cancel_all_goals()
-    #         self.get_random_frontier()
-    #         self.navigate_to_frontier(self.closest_frontier)
-    #         return True
+        # Preempt condition 2: If robot is stationary for 5 seconds
+        current_time = rospy.Time.now()
+        if self.last_position == (self.odom.posx, self.odom.posy) and (current_time - self.last_time).to_sec() > 5:
+            rospy.loginfo("Preempting goal due to robot being stationary for 5 seconds.")
+            self.client.cancel_all_goals()
+            self.get_random_frontier()
+            self.navigate_to_frontier(self.closest_frontier)
+            return True
 
-    #     return False
+        return False
 
     def main(self):
         while self.current_map is None and not rospy.is_shutdown():
@@ -279,17 +277,22 @@ class FrontierExploration:
         self.last_time = rospy.Time.now()
 
         while not rospy.is_shutdown():
+            start_time = rospy.Time.now()
             self.identify_frontiers()
             print(len(self.frontiers))
             self.get_closest_frontier()
             self.navigate_to_frontier(self.closest_frontier)
-            rospy.sleep(20)
+            print(f"Current: {self.odom.posx, self.odom.posy}. Goal: {self.goal}")
+            while True:
+                current_time = rospy.Time.now()
+                self.check_preempt_conditions()
+                elapsed_time = current_time - start_time
+                if elapsed_time.to_sec() >= 20:
+                    break
+            rospy.sleep(0.1)
 
-            # # TODO: add an actual 10 second timer here instead of for loop
-            # for _ in range(20):
-            #     if self.check_preempt_conditions():
-            #         self.last_position = (self.odom.posx, self.odom.posy)
-            #         self.last_time = rospy.Time.now()
+
+            
 
 
 if __name__ == "__main__":
