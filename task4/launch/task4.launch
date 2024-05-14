@@ -30,7 +30,8 @@
   <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro" />
   <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-urdf -model turtlebot3_$(arg model) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -Y $(arg yaw) -param robot_description" />
 
-
+  <param name="move_base/local_costmap/robot_radius" value="0.2" />
+  <param name="move_base/global_costmap/robot_radius" value="0.2" />
   <!-- SLAM: Gmapping, Cartographer, Hector, Karto, Frontier_exploration, RTAB-Map -->
   <include file="$(find turtlebot3_slam)/launch/turtlebot3_$(arg slam_methods).launch">
     <arg name="model" value="$(arg model)"/>

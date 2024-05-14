@@ -15,6 +15,7 @@ from nav_msgs.msg import OccupancyGrid
 import math
 import random
 import os
+from dynamic_reconfigure.client import Client
 
 import waffle
 
@@ -24,6 +25,16 @@ from tb3 import Tb3Move
 
 
 class FrontierExploration:
+    def set_inflation_radius(self, inflation_radius, cost_scaling_factor):
+        client = Client("move_base/local_costmap/inflation_layer", timeout=0)
+        params = {"inflation_radius": inflation_radius, "cost_scaling_factor": cost_scaling_factor}
+        config = client.update_configuration(params)
+
+        client = Client("move_base/global_costmap/inflation_layer", timeout=0)
+        params = {"inflation_radius": inflation_radius, "cost_scaling_factor": cost_scaling_factor}
+        config = client.update_configuration(params)
+
+
     def __init__(self):
 
         rospy.init_node('frontier_exploration', anonymous=False)
@@ -46,6 +57,9 @@ class FrontierExploration:
         self.goal = None
         self.last_position = None
         self.last_time = None
+        self.goal_threshold = 0.25
+
+        self.set_inflation_radius(0.1, 1.0)
 
         #initialize attributes for the camera and color detection
         # TODO: change camera topic for submit
@@ -250,10 +264,12 @@ class FrontierExploration:
 
     def check_preempt_conditions(self):
         # Preempt condition 1: If robot's x and y are the same as the goal's x and y
-        if self.odom.posx == self.goal[0] and self.odom.posy == self.goal[1]:
+        distance_to_goal = math.sqrt((self.odom.posx - self.goal[0]) ** 2 + (self.odom.posy - self.goal[1]) ** 2)
+        if distance_to_goal <= self.goal_threshold:
             rospy.loginfo("Preempting goal due to reaching the destination.")
             self.client.cancel_all_goals()
-            self.get_random_frontier()
+            self.identify_frontiers()
+            self.get_closest_frontier()
             self.navigate_to_frontier(self.closest_frontier)
             return True
 
@@ -262,6 +278,7 @@ class FrontierExploration:
         if self.last_position == (self.odom.posx, self.odom.posy) and (current_time - self.last_time).to_sec() > 5:
             rospy.loginfo("Preempting goal due to robot being stationary for 5 seconds.")
             self.client.cancel_all_goals()
+            self.identify_frontiers()
             self.get_random_frontier()
             self.navigate_to_frontier(self.closest_frontier)
             return True
@@ -285,7 +302,10 @@ class FrontierExploration:
             print(f"Current: {self.odom.posx, self.odom.posy}. Goal: {self.goal}")
             while True:
                 current_time = rospy.Time.now()
-                self.check_preempt_conditions()
+                if self.check_preempt_conditions():
+                    self.last_position = (self.odom.posx, self.odom.posy)
+                    self.last_time = rospy.Time.now()
+                
                 elapsed_time = current_time - start_time
                 if elapsed_time.to_sec() >= 20:
                     break
