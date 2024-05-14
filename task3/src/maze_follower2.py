@@ -14,7 +14,7 @@ class WallFollowerPID:
         self.lidar = waffle.Lidar(debug=True)
         self.odom = waffle.Pose(debug=True)
         
-        self.P = 6
+        self.P = 5.5 #6
         self.I = 0
         self.D = 10
         
@@ -22,7 +22,7 @@ class WallFollowerPID:
         self.prev_error = 0.0
         self.integral = 0.0
 
-        self.fwd_vel = 0.2
+        self.fwd_vel = 0.1 #0.2
 
     def stop(self):
         self.motion.set_velocity(0.0, 0.0)
