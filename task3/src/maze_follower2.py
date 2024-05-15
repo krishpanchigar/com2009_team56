@@ -87,17 +87,15 @@ class WallFollowerPID:
 
             # TODO: fix turning logic to follow the right-wall
             
-            if right_distance > 0.75 and front_distance > 0.6:
-                self.right_wall_gap()
-            elif front_distance < 0.45:
-                if right_distance > left_distance:
-                    self.motion.set_velocity(0, -1.0)
-                    self.motion.publish_velocity()
-                    rospy.loginfo("Turning right due to front wall")
-                else:
+            if front_distance < 0.35:
+                if left_distance > right_distance:
                     self.motion.set_velocity(0, 1.0)
                     self.motion.publish_velocity()
                     rospy.loginfo("Turning left due to front wall")
+                else:
+                    self.motion.set_velocity(0, -1.0)
+                    self.motion.publish_velocity()
+                    rospy.loginfo("Turning right due to fornt wall")
                 time.sleep(0.75) 
                 self.stop()
             else:
@@ -111,6 +109,7 @@ class WallFollowerPID:
             rospy.loginfo(f"Fwd Vel: {self.fwd_vel} Right distance: {right_distance}, Correction: {correction}")
             
             self.rate.sleep()
+
 
 if __name__ == '__main__':
     rospy.init_node('wall_follower_pid')
