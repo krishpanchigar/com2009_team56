@@ -4,7 +4,6 @@ import rospy
 import math
 import time
 import numpy as np
-from tb3 import Tb3Move, Tb3Odometry, Tb3LaserScan
 import waffle
 
 class WallFollowerPID:
@@ -76,15 +75,21 @@ class WallFollowerPID:
 
             # TODO: fix turning logic to follow the right-wall
             
-            if front_distance < 0.35:
-                if left_distance > right_distance:
+            if right_distance > 0.5:
+                self.motion.set_velocity(0, -1.0)
+                self.motion.publish_velocity()
+                rospy.loginfo("Turning right due to gap in right wall")
+                time.sleep(0.75) 
+                self.stop()
+            elif front_distance < 0.35:
+                if right_distance > left_distance:
+                    self.motion.set_velocity(0, -1.0)
+                    self.motion.publish_velocity()
+                    rospy.loginfo("Turning right due to front wall")
+                else:
                     self.motion.set_velocity(0, 1.0)
                     self.motion.publish_velocity()
                     rospy.loginfo("Turning left due to front wall")
-                else:
-                    self.motion.set_velocity(0, -1.0)
-                    self.motion.publish_velocity()
-                    rospy.loginfo("Turning right due to fornt wall")
                 time.sleep(0.75) 
                 self.stop()
             else:
