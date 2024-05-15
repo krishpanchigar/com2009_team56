@@ -13,9 +13,9 @@ class WallFollowerPID:
         self.lidar = waffle.Lidar(debug=True)
         self.odom = waffle.Pose(debug=True)
         
-        self.P = 2.5
+        self.P = 1
         self.I = 0.0
-        self.D = 0.0
+        self.D = 2.1
         
         self.desired_distance = 0.3
         self.prev_error = 0.0
@@ -35,9 +35,21 @@ class WallFollowerPID:
         right_distance = min(self.lidar.subsets.r3Array)
 
         if front_distance < 0.5 or right_distance < 0.25:
-            return 0.1
+            return 0.15
         else:
-            return 0.2
+            return 0.25
+        
+    def right_wall_gap(self):
+        time.sleep(0.5)
+        self.motion.set_velocity(0, -math.pi/2)
+        self.motion.publish_velocity()
+        rospy.loginfo("Turning right due to gap in right wall")
+        time.sleep(1.2) 
+        self.stop()
+        self.motion.set_velocity(0.75, 0)
+        self.motion.publish_velocity()
+        time.sleep(1.5) 
+        self.stop()
 
 
     def pid_control(self, current_distance):
@@ -75,13 +87,9 @@ class WallFollowerPID:
 
             # TODO: fix turning logic to follow the right-wall
             
-            if right_distance > 0.5:
-                self.motion.set_velocity(0, -1.0)
-                self.motion.publish_velocity()
-                rospy.loginfo("Turning right due to gap in right wall")
-                time.sleep(0.75) 
-                self.stop()
-            elif front_distance < 0.35:
+            if right_distance > 0.75 and front_distance > 0.6:
+                self.right_wall_gap()
+            elif front_distance < 0.45:
                 if right_distance > left_distance:
                     self.motion.set_velocity(0, -1.0)
                     self.motion.publish_velocity()
