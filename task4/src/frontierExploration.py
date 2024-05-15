@@ -154,10 +154,10 @@ class FrontierExploration:
                     if not os.path.exists(snaps_dir):
                         os.makedirs(snaps_dir)
                     filepath = os.path.join(snaps_dir, "task4_beacon.jpg")
+                    cv2.imwrite(filepath, crop_img)
                     print(f"H/W {h/w}")
 
-                    if h/w >= 1.24 and h/w <= 1.26:
-                        self.motion.stop()
+                    if h/w >= 1.24 and h/w <= 1.26 and h > 200:
                         cv2.imwrite(filepath, crop_img)
                         self.camera_subscriber.unregister()
 
