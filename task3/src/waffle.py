@@ -162,6 +162,8 @@ class Lidar():
             self.timestamp = rospy.get_time()
             self.front = 0.0;
             self.frontArray = []
+            self.back = 0.0;
+            self.backArray = []
             self.r1 = 0.0;
             self.r2 = 0.0;
             self.r3 = 0.0;
@@ -238,6 +240,8 @@ class Lidar():
         self.subsets.l4, self.subsets.l4Array = self.get_subset(95, 110)
 
         self.wait_for_lidar = False
+
+        self.subsets.back, self.subsets.backArray = self.get_subset(150, 210)
 
 
 class PIDController:
