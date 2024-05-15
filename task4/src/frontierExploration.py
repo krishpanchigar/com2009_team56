@@ -310,9 +310,10 @@ class FrontierExploration:
                 if elapsed_time.to_sec() >= 20:
                     break
             rospy.sleep(0.1)
-            # Update last_position and last_time at the end of each loop
-            self.last_position = (self.odom.posx, self.odom.posy)
-            self.last_time = rospy.Time.now()
+            # Update last_position and last_time only if the robot has moved
+            if (self.odom.posx, self.odom.posy) != self.last_position:
+                self.last_position = (self.odom.posx, self.odom.posy)
+                self.last_time = rospy.Time.now()
 
 
             
