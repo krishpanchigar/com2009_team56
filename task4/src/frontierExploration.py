@@ -59,7 +59,7 @@ class FrontierExploration:
         self.last_time = None
         self.goal_threshold = 0.25
 
-        self.set_inflation_radius(0.1, 1.0)
+        self.set_inflation_radius(0.1, 10.0)
 
         #initialize attributes for the camera and color detection
         # TODO: change camera topic for submit
@@ -275,7 +275,8 @@ class FrontierExploration:
 
         # Preempt condition 2: If robot is stationary for 5 seconds
         current_time = rospy.Time.now()
-        if self.last_position == (self.odom.posx, self.odom.posy) and (current_time - self.last_time).to_sec() > 5:
+        last_pos_rounded = (round(self.last_position[0], 1), round(self.last_position[1], 1))
+        if last_pos_rounded == (round(self.odom.posx, 1), round(self.odom.posy, 1)) and (current_time - self.last_time).to_sec() > 5:
             rospy.loginfo("Preempting goal due to robot being stationary for 5 seconds.")
             self.client.cancel_all_goals()
             self.identify_frontiers()
