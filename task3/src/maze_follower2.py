@@ -30,7 +30,7 @@ class WallFollowerPID:
         time.sleep(1)
 
     def calculate_forward_velocity(self):
-        # TODO: improve fwd veolocity control
+        # TODO: improve fwd velocity control
         front_distance = min(self.lidar.subsets.frontArray)
         right_distance = min(self.lidar.subsets.r3Array)
 
@@ -101,8 +101,6 @@ class WallFollowerPID:
             back_distance = min(back_distances)
 
             self.fwd_vel = self.calculate_forward_velocity()
-
-            # TODO: fix turning logic to follow the right-wall
             
             if front_distance < 0.35:
                 if back_distance < 0.2:
