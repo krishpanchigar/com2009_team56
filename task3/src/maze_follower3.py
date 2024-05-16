@@ -40,4 +40,4 @@ class Maze_follower:
 
 if __name__ == '__main__':
     maze_solver = Maze_follower()
-    maze_solver.solve_maze()
+    maze_solver.maze_follow()
