@@ -60,6 +60,7 @@ class FrontierExploration:
         self.last_time = None
         self.goal_threshold = 0.3
         self.last_goal_frontier = None
+        self.explored_frontiers = set()
 
         self.set_inflation_radius(0.1, 10.0)
 
@@ -72,6 +73,7 @@ class FrontierExploration:
         self.m00_min = 10000
         self.object_position = PoseStamped()
         rospy.loginfo("Target Colour: %s", self.target_colour)
+        self.image_taken = False
 
     def map_callback(self, map_data):
         # Check if a new map has been initialized
@@ -86,7 +88,7 @@ class FrontierExploration:
         robot_y = int((self.odom.posy - map_data.info.origin.position.y) / map_data.info.resolution)
 
         # Define the radius of the explored area in map coordinates
-        radius = 37
+        radius = 20
 
         # Copy cells within the radius from the original map to the new map
         for dx in range(-radius, radius + 1):
@@ -151,19 +153,21 @@ class FrontierExploration:
                     distance_mm = (focal_length * real_object_width) / w
                     distance_m = distance_mm / 1000 + 0.1
                     beacon_width_pixels = (distance_mm + w) / focal_length
-                    print(f"Beacon width: {beacon_width_pixels}")
-                    print(f"W: {w}")
 
                     snaps_dir = os.path.join(os.path.expanduser('~'), 'catkin_ws/src/com2009_team56/snaps')
                     if not os.path.exists(snaps_dir):
                         os.makedirs(snaps_dir)
                     filepath = os.path.join(snaps_dir, "task4_beacon.jpg")
-                    cv2.imwrite(filepath, crop_img)
-                    print(f"H/W {h/w}")
 
-                    if h/w >= 1.24 and h/w <= 1.26 and h > 200:
+
+                    frame_center = width / 2
+                    tolerance = width * 0.2
+
+                    if not self.image_taken and frame_center - tolerance <= self.cy <= frame_center + tolerance:
+                        self.motion.stop()
                         cv2.imwrite(filepath, crop_img)
-                        self.camera_subscriber.unregister()
+                        rospy.loginfo("Image taken")
+                        self.image_taken = True
 
                     # Assume the robot yaw and global position are known
                     object_x = distance_m * math.cos(0.0)  # Replace with your robot's yaw
@@ -219,6 +223,7 @@ class FrontierExploration:
         print(len(self.frontiers))
 
     def get_closest_frontier(self):
+        self.identify_frontiers()
         pos_x = self.odom.posx
         pos_y = self.odom.posy
         occupancy_grid = self.current_map
@@ -232,24 +237,20 @@ class FrontierExploration:
 
         for frontier in self.frontiers:
             unexplored_count = 0
-            if self.last_goal_frontier is None:
-                for dx in [-3, -2, -1, 0, 1, 2, 3]:
-                    for dy in [-3, -2, -1, 0, 1, 2, 3]:
-                        x = frontier[0] + dx
-                        y = frontier[1] + dy
-                        i = y * width + x
+            
+            for dx in [-3, -2, -1, 0, 1, 2, 3]:
+                for dy in [-3, -2, -1, 0, 1, 2, 3]:
+                    x = frontier[0] + dx
+                    y = frontier[1] + dy
+                    i = y * width + x
 
-                        if 0 <= i < len(map_data) and map_data[i] == -1:
-                            unexplored_count += 1
+                    if 0 <= i < len(map_data) and map_data[i] == -1:
+                        unexplored_count += 1
 
-                if unexplored_count > max_unexplored:
-                    max_unexplored = unexplored_count
-                    best_frontier = frontier
-            else:
-                distance = math.sqrt((frontier[0] - self.last_goal_frontier[0]) ** 2 + (frontier[1] - self.last_goal_frontier[1]) ** 2)
-                if distance < min_distance and frontier != self.last_goal_frontier:
-                    best_frontier = frontier
-                    min_distance = distance
+            if unexplored_count > max_unexplored:
+                max_unexplored = unexplored_count
+                best_frontier = frontier
+        
 
         self.closest_frontier = best_frontier
 
@@ -272,6 +273,7 @@ class FrontierExploration:
         rospy.sleep(1)
         print("publishing goal")
         goal_publisher.publish(goal)
+        self.explored_frontiers.add(frontier)
 
     def check_preempt_conditions(self):
         # Preempt condition 1: If robot's x and y are the same as the goal's x and y
@@ -287,7 +289,7 @@ class FrontierExploration:
         # Preempt condition 2: If robot is stationary for 5 seconds
         current_time = rospy.Time.now()
         last_pos_rounded = (round(self.last_position[0], 1), round(self.last_position[1], 1))
-        if last_pos_rounded == (round(self.odom.posx, 1), round(self.odom.posy, 1)) and (current_time - self.last_time).to_sec() > 5:
+        if last_pos_rounded == (round(self.odom.posx, 1), round(self.odom.posy, 1)) and (current_time - self.last_time).to_sec() > 10:
             rospy.loginfo("Preempting goal due to robot being stationary for 5 seconds.")
             self.client.cancel_all_goals()
             self.identify_frontiers()
@@ -300,7 +302,7 @@ class FrontierExploration:
     def main(self):
         while self.current_map is None and not rospy.is_shutdown():
             rospy.loginfo("Waiting for map...")
-            rospy.sleep(1)
+            rospy.sleep(0.1)
 
         self.last_position = (self.odom.posx, self.odom.posy)
         self.last_time = rospy.Time.now()
