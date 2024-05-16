@@ -18,7 +18,8 @@ class Maze_follower:
     def maze_follow(self):
         while not rospy.is_shutdown():
             front_distance = min(self.lidar_controller.subsets.frontArray)
-            right_distance = min(self.lidar_controller.subsets.r2Array) 
+            right_distance = min(self.lidar_controller.subsets.r2Array)
+            left_distance = min(self.lidar_controller.subsets.l2Array) 
 
             if front_distance > 0.4:
                 if right_distance < 0.3:
@@ -31,9 +32,14 @@ class Maze_follower:
                     rospy.loginfo("Turning right")
                     self.motion_controller.set_velocity(linear=0.26, angular=-0.9)
             else:
-                rospy.loginfo("Front obstacle detected. Turning away.")
-                self.motion_controller.set_velocity(linear=0, angular=1.2)
-                self.motion_controller.publish_velocity()
+                if left_distance > right_distance:
+                    rospy.loginfo("Front obstacle detected. Turning left.")
+                    self.motion_controller.set_velocity(linear=0, angular=1)
+                    self.motion_controller.publish_velocity()
+                else:
+                    rospy.loginfo("Front obstacle detected. Turning right.")
+                    self.motion_controller.set_velocity(linear=0, angular=-1)
+                    self.motion_controller.publish_velocity()
 
             self.motion_controller.publish_velocity() 
             self.rate.sleep()
