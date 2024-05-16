@@ -184,6 +184,8 @@ class FrontierExploration:
         width = occupancy_grid.info.width
         height = occupancy_grid.info.height
         map_data = occupancy_grid.data
+        resolution = occupancy_grid.info.resolution
+        origin = occupancy_grid.info.origin.position
 
         self.frontiers = set()
 
@@ -211,34 +213,27 @@ class FrontierExploration:
                             break
 
                     if not wall_neighbour:
-                        self.frontiers.add((x, y))
+                        # Convert map indices to world coordinates and round to 1 decimal place
+                        frontier_x = round(x * resolution + origin.x, 1)
+                        frontier_y = round(y * resolution + origin.y, 1)
+                        self.frontiers.add((frontier_x, frontier_y))
         print(len(self.frontiers))
 
     def get_closest_frontier(self):
         pos_x = self.odom.posx
         pos_y = self.odom.posy
-        occupancy_grid = self.current_map
-        width = occupancy_grid.info.width
-        height = occupancy_grid.info.height
-        map_data = occupancy_grid.data
 
-        max_unexplored = 0
+        min_distance = float('inf')
         best_frontier = None
 
         for frontier in self.frontiers:
-            unexplored_count = 0
+            # Calculate the Euclidean distance from the robot's current position to the frontier
+            distance = math.sqrt((pos_x - frontier[0]) ** 2 + (pos_y - frontier[1]) ** 2)
 
-            for dx in [-3, -2, -1, 0, 1, 2, 3]:
-                for dy in [-3, -2, -1, 0, 1, 2, 3]:
-                    x = frontier[0] + dx
-                    y = frontier[1] + dy
-                    i = y * width + x
-
-                    if 0 <= i < len(map_data) and map_data[i] == -1:
-                        unexplored_count += 1
-
-            if unexplored_count > max_unexplored:
-                max_unexplored = unexplored_count
+            # If the distance is smaller than the current minimum distance, update the minimum distance and the best
+            # frontier
+            if distance < min_distance:
+                min_distance = distance
                 best_frontier = frontier
 
         self.closest_frontier = best_frontier
@@ -251,10 +246,7 @@ class FrontierExploration:
         goal = PoseStamped()
         goal.header.frame_id = 'map'
         goal.header.stamp = rospy.Time.now()
-        resolution = self.current_map.info.resolution
-        origin = self.current_map.info.origin.position
-        self.goal = (frontier[0] * resolution + origin.x, frontier[1] * resolution + origin.y)
-        goal.pose.position = Point(frontier[0] * resolution + origin.x, frontier[1] * resolution + origin.y, 0)
+        goal.pose.position = Point(frontier[0], frontier[1], 0)
         goal.pose.orientation.w = 1.0
 
         goal_publisher = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=1)
