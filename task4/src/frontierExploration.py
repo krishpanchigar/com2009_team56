@@ -31,7 +31,7 @@ class FrontierExploration:
         config = client.update_configuration(params)
 
         client = Client("move_base/global_costmap/inflation_layer", timeout=0)
-        params = {"inflation_radius": inflation_radius, "cost_scaling_factor": cost_scaling_factor}
+        params = {"inflation_radius": 0.4}
         config = client.update_configuration(params)
 
 
@@ -57,7 +57,7 @@ class FrontierExploration:
         self.goal = None
         self.last_position = None
         self.last_time = None
-        self.goal_threshold = 0.25
+        self.goal_threshold = 0.3
 
         self.set_inflation_radius(0.1, 10.0)
 
@@ -84,7 +84,7 @@ class FrontierExploration:
         robot_y = int((self.odom.posy - map_data.info.origin.position.y) / map_data.info.resolution)
 
         # Define the radius of the explored area in map coordinates
-        radius = 25  # Adjust this value as needed
+        radius = 33
 
         # Copy cells within the radius from the original map to the new map
         for dx in range(-radius, radius + 1):
