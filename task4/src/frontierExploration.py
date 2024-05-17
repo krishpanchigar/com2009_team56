@@ -67,7 +67,7 @@ class FrontierExploration:
         self.m00 = 0
         self.m00_min = 10000
         self.object_position = PoseStamped()
-        rospy.loginfo("Target Colour: %s", self.target_colour)
+        rospy.loginfo(f"TASK 4 BEACON: The target is {self.target_colour}.")
         self.image_taken = False
 
     def map_callback(self, map_data):
