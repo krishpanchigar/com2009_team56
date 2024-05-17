@@ -202,8 +202,8 @@ class FrontierExploration:
                 if 0 <= i < len(map_data) and map_data[i] == 0:
                     # Check for neighbouring cells
                     wall_neighbour = False
-                    for dx in [-1, 0, 1]:
-                        for dy in [-1, 0, 1]:
+                    for dx in [-2, -1, 0, 1, 2]:
+                        for dy in [-2 ,-1, 0, 1, 2]:
                             nx, ny = x + dx, y + dy
                             ni = ny * width + nx
                             if 0 <= nx < width and 0 <= ny < height and 0 <= ni < len(map_data):
@@ -218,7 +218,7 @@ class FrontierExploration:
 
         print(f"Identified {len(self.frontiers)} frontiers.")
 
-    def get_closest_frontier(self):
+    def get_closest_frontier(self, distance_weight=0.5, unexplored_weight=10):
         self.identify_frontiers()
         pos_x = self.odom.posx
         pos_y = self.odom.posy
@@ -231,15 +231,15 @@ class FrontierExploration:
         for frontier in self.frontiers:
             x, y = frontier
             unexplored_count = 0
-            for dx in [-1, 0, 1]:
-                for dy in [-1, 0, 1]:
+            for dx in [-3, -2 ,-1, 0, 1, 2, 3]:
+                for dy in [-3, -2, -1, 0, 1, 2, 3]:
                     nx, ny = x + dx, y + dy
                     i = ny * width + nx
                     if 0 <= i < len(occupancy_grid.data) and occupancy_grid.data[i] == -1:
                         unexplored_count += 1
 
             distance = math.sqrt((x - pos_x)**2 + (y - pos_y)**2)
-            score = unexplored_count - distance
+            score = unexplored_weight * unexplored_count - distance_weight * distance
 
             if score > best_score:
                 best_score = score
@@ -287,7 +287,7 @@ class FrontierExploration:
             rospy.loginfo("Preempting goal due to robot being stationary for 5 seconds.")
             self.client.cancel_all_goals()
             self.identify_frontiers()
-            self.get_random_frontier()
+            # self.get_random_frontier()
             self.navigate_to_frontier(self.closest_frontier)
             return True
 
