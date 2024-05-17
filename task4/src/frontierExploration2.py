@@ -198,29 +198,25 @@ class FrontierExploration:
         # iterating over the map data
         for y in range(height):
             for x in range(width):
-                # index of cell
                 i = y * width + x
-
-                if map_data[i] == 0:
-                    # check for neighbouring cells
+                if 0 <= i < len(map_data) and map_data[i] == 0:
+                    # Check for neighbouring cells
                     wall_neighbour = False
-                    for dx in [-2, -1, 0, 1, 2]:
-                        for dy in [-2, -1, 0, 1, 2]:
-                            ni = (y + dy) * width + (x + dx)
-
-                            if (0 <= ni < len(map_data)):
-                                if map_data[ni] == -1:
-                                    wall_neighbour = True
-                                elif map_data[ni] == 100:
+                    for dx in [-1, 0, 1]:
+                        for dy in [-1, 0, 1]:
+                            nx, ny = x + dx, y + dy
+                            ni = ny * width + nx
+                            if 0 <= nx < width and 0 <= ny < height and 0 <= ni < len(map_data):
+                                if map_data[ni] == -1 or map_data[ni] == 100:
                                     wall_neighbour = True
                                     break
-
                         if wall_neighbour:
                             break
 
                     if not wall_neighbour:
                         self.frontiers.add((x, y))
-        print(len(self.frontiers))
+
+        print(f"Identified {len(self.frontiers)} frontiers.")
 
     def get_closest_frontier(self):
         self.identify_frontiers()
@@ -228,35 +224,33 @@ class FrontierExploration:
         pos_y = self.odom.posy
         occupancy_grid = self.current_map
         width = occupancy_grid.info.width
-        height = occupancy_grid.info.height
-        map_data = occupancy_grid.data
 
-        max_unexplored = 0
         best_frontier = None
-        min_distance = float('inf')
+        best_score = float('-inf')
 
         for frontier in self.frontiers:
+            x, y = frontier
             unexplored_count = 0
-            
-            for dx in [-3, -2, -1, 0, 1, 2, 3]:
-                for dy in [-3, -2, -1, 0, 1, 2, 3]:
-                    x = frontier[0] + dx
-                    y = frontier[1] + dy
-                    i = y * width + x
-
-                    if 0 <= i < len(map_data) and map_data[i] == -1:
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    nx, ny = x + dx, y + dy
+                    i = ny * width + nx
+                    if 0 <= i < len(occupancy_grid.data) and occupancy_grid.data[i] == -1:
                         unexplored_count += 1
 
-            if unexplored_count > max_unexplored:
-                max_unexplored = unexplored_count
+            distance = math.sqrt((x - pos_x)**2 + (y - pos_y)**2)
+            score = unexplored_count - distance
+
+            if score > best_score:
+                best_score = score
                 best_frontier = frontier
-        
 
         self.closest_frontier = best_frontier
+        return best_frontier  # Optionally return the closest frontier for further use
 
-    def get_random_frontier(self):
-        self.closest_frontier = random.choice(list(self.frontiers))
-        print(self.closest_frontier)
+    # def get_random_frontier(self):
+    #     self.closest_frontier = random.choice(list(self.frontiers))
+    #     print(self.closest_frontier)
 
     def navigate_to_frontier(self, frontier):
         goal = PoseStamped()
