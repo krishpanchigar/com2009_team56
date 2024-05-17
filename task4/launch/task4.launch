@@ -12,14 +12,14 @@
   <arg name="initial_pose_a" default="0.0"/>
   <arg name="move_forward_only" default="false"/>
 
-  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+  <!-- <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find com2009_simulations)/worlds/exploration.world"/>
     <arg name="paused" value="false"/>
     <arg name="use_sim_time" value="true"/>
     <arg name="gui" value="true"/>
     <arg name="headless" value="false"/>
     <arg name="debug" value="false"/>
-  </include>  
+  </include>   -->
 
   <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro" />
   
@@ -30,8 +30,8 @@
   <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro" />
   <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-urdf -model turtlebot3_$(arg model) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -Y $(arg yaw) -param robot_description" />
 
-  <param name="move_base/local_costmap/robot_radius" value="0.2" />
-  <param name="move_base/global_costmap/robot_radius" value="0.2" />
+  <param name="move_base/local_costmap/robot_radius" value="0.15" />
+  <param name="move_base/global_costmap/robot_radius" value="0.15" />
 
   <!-- SLAM: Gmapping, Cartographer, Hector, Karto, Frontier_exploration, RTAB-Map -->
   <include file="$(find turtlebot3_slam)/launch/turtlebot3_$(arg slam_methods).launch">
@@ -52,17 +52,16 @@
   </group>
 
   <!-- Camera -->
-  <node name="rqt_image_view" pkg="rqt_image_view" type="rqt_image_view" args="--perspective /camera/rgb/image_raw"/>
+  <node name="rqt_image_view" pkg="rqt_image_view" type="rqt_image_view" args="--perspective /camera/color/image_raw"/>
 
   <!-- Python node -->
   <arg name="target_colour" default="green"/>
 
-  <node pkg="com2009_team56" type="frontier_exploration" name="frontier_exploration" output="screen">
+  <node pkg="com2009_team56" type="frontierExploration.py" name="frontier_exploration" output="screen">
       <param name="target_colour" value="$(arg target_colour)"/>
   </node>
 
   <!-- Map Saver Node -->
   <node name="map_saver_node" pkg="com2009_team56" type="map_saver.py" output="screen"/>
-
 
 </launch>

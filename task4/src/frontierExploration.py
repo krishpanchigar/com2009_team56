@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-# TODO: make sure entire width of beacon in in the image
-# TODO: add node to launch file
-
 import rospy
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
@@ -21,8 +18,6 @@ import waffle
 
 from tf.transformations import quaternion_from_euler
 
-from tb3 import Tb3Move
-
 
 class FrontierExploration:
     def set_inflation_radius(self, inflation_radius, cost_scaling_factor):
@@ -31,7 +26,7 @@ class FrontierExploration:
         config = client.update_configuration(params)
 
         client = Client("move_base/global_costmap/inflation_layer", timeout=0)
-        params = {"inflation_radius": 0.4}
+        params = {"inflation_radius": 0.3}
         config = client.update_configuration(params)
 
 
@@ -66,7 +61,7 @@ class FrontierExploration:
 
         #initialize attributes for the camera and color detection
         # TODO: change camera topic for submit
-        self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
+        self.camera_subscriber = rospy.Subscriber("/camera/color/image_raw", Image, self.camera_callback)
         self.cvbridge_interface = CvBridge()
         self.target_colour = rospy.get_param('~target_colour', 'green')
         self.m00 = 0
@@ -132,8 +127,8 @@ class FrontierExploration:
             lower = (23, 175, 0)
             upper = (28, 250, 255)
         elif self.target_colour == "blue":
-            lower = (115, 224, 100)
-            upper = (130, 255, 255)
+            lower = (100, 206, 100)
+            upper = (106, 255, 255)
 
         mask = cv2.inRange(hsv_img, lower, upper)
         m = cv2.moments(mask)
@@ -233,7 +228,6 @@ class FrontierExploration:
 
         max_unexplored = 0
         best_frontier = None
-        min_distance = float('inf')
 
         for frontier in self.frontiers:
             unexplored_count = 0
@@ -299,6 +293,7 @@ class FrontierExploration:
 
         return False
 
+    
     def main(self):
         while self.current_map is None and not rospy.is_shutdown():
             rospy.loginfo("Waiting for map...")
