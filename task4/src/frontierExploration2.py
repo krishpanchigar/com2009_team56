@@ -34,6 +34,11 @@ class FrontierExploration:
         params = {"inflation_radius": 0.4}
         config = client.update_configuration(params)
 
+        client = Client("move_base/DWAPlannerROS", timeout=0)
+        params = {
+            "yaw_goal_tolerance": 3.14
+        }
+
 
     def __init__(self):
 
